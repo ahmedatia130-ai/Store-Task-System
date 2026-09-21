@@ -71,7 +71,17 @@ var APP_URL = 'https://script.google.com/macros/s/AKfycby2HVvQKQRl1hR48XaYV45ZKK
 /* بنمرّر باراميترات الرابط زي ما هي (?qr=1 بتاع كود الحضور)
    عشان مسح الكود المطبوع يفتح شاشة الحضور مباشرة. */
 var q = location.search || '';
-var src = APP_URL + (q ? (APP_URL.indexOf('?') >= 0 ? '&' + q.slice(1) : q) : '');
+
+/* شاشة الحضور بتتفتح كصفحة كاملة مش جوه إطار.
+   سفاري على الآيفون مابيديش صلاحية الموقع لإطار جوه إطار، فتسجيل الحضور
+   كان بيقول "مفيش صلاحية" مهما عملنا. التحويل ده بيحل المشكلة نهائيًا. */
+if (/[?&]qr=1(&|$)/.test(q)) {
+  location.replace(APP_URL + '?qr=1');
+}
+
+/* emb=1 بتقول للتطبيق إنه شغال جوه البورتال */
+var extra = (q ? q.slice(1) + '&' : '') + 'emb=1';
+var src = APP_URL + (APP_URL.indexOf('?') >= 0 ? '&' : '?') + extra;
 
 var fr = document.getElementById('frame');
 var sp = document.getElementById('splash');
