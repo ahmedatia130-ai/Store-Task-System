@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f2744">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="2S Command Center">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>2S Command Center</title>
+
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="favicon-512.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0f2744;
+   font-family:'Segoe UI',Tahoma,Arial,sans-serif}
+  #frame{position:fixed;inset:0;width:100%;height:100%;border:0;display:block;background:#f4f6fa}
+
+  /* شاشة التحميل — بتختفي أول ما التطبيق يفتح */
+  #splash{position:fixed;inset:0;background:#0f2744;color:#fff;z-index:9;
+   display:flex;flex-direction:column;align-items:center;justify-content:center;
+   padding:28px;text-align:center;transition:opacity .35s ease}
+  #splash.out{opacity:0;pointer-events:none}
+  #splash img{width:112px;height:112px;object-fit:contain;background:#fff;
+   border-radius:22px;padding:10px;box-sizing:border-box}
+  #splash .nm{font-size:17px;margin-top:16px}
+  #splash .tg{font-size:12.5px;color:#f5a33c;margin-top:4px;letter-spacing:.5px}
+  #splash .sp{width:34px;height:34px;margin-top:22px;border-radius:50%;
+   border:3px solid rgba(255,255,255,.22);border-top-color:#f5a33c;
+   animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #splash .sub{font-size:12px;color:#93a6c2;margin-top:14px;max-width:320px;line-height:1.7}
+  #splash a.alt{display:none;margin-top:18px;background:#f5a33c;color:#0f2744;
+   text-decoration:none;font-weight:600;font-size:13.5px;padding:11px 20px;border-radius:12px}
+  #splash.stuck a.alt{display:inline-block}
+  @media(prefers-reduced-motion:reduce){#splash .sp{animation-duration:6s}}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <img src="logo.png" alt="2S Home Wear">
+  <div class="nm">2S Command Center</div>
+  <div class="tg">أداء منظّم · جودة أعلى</div>
+  <div class="sp"></div>
+  <div class="sub" id="ssub">جاري فتح النظام…</div>
+  <a class="alt" id="alt" href="#" target="_blank" rel="noopener">افتح النظام في تاب جديد ↗</a>
+</div>
+
+<iframe id="frame"
+        title="2S Command Center"
+        allow="geolocation *; clipboard-write *; fullscreen *"
+        allowfullscreen
+        referrerpolicy="no-referrer"></iframe>
+
+<script>
+/* ===========================================================
+   رابط تطبيق الويب (Apps Script) — غيّره هنا بس لو عملت Deploy جديد
+   =========================================================== */
+var APP_URL = 'https://script.google.com/macros/s/AKfycby2HVvQKQRl1hR48XaYV45ZKKDwX8RsSftvlSseD5n5e52UOAeqVFBT70UdKhsJW-tX/exec';
+
+/* بنمرّر باراميترات الرابط زي ما هي (?qr=1 بتاع كود الحضور)
+   عشان مسح الكود المطبوع يفتح شاشة الحضور مباشرة. */
+var q = location.search || '';
+var src = APP_URL + (q ? (APP_URL.indexOf('?') >= 0 ? '&' + q.slice(1) : q) : '');
+
+var fr = document.getElementById('frame');
+var sp = document.getElementById('splash');
+var alt = document.getElementById('alt');
+alt.href = src;
+
+var hidden = false;
+function hide(){
+  if (hidden) return;
+  hidden = true;
+  clearTimeout(stuckT);
+  sp.classList.add('out');
+  setTimeout(function(){ if (sp.parentNode) sp.parentNode.removeChild(sp) }, 400);
+}
+fr.addEventListener('load', function(){ setTimeout(hide, 450) });
+
+/* أول تشغيل بعد فترة سكون جوجل بياخد ثواني — بنطمّن المستخدم،
+   ولو طوّل بنعرض زرار فتح في تاب جديد كخطة بديلة. */
+var slowT  = setTimeout(function(){
+  if (!hidden) document.getElementById('ssub').textContent =
+   'أول فتح بعد فترة سكون بياخد ثواني لحد ما جوجل يشغّل السكريبت…';
+}, 4000);
+var stuckT = setTimeout(function(){
+  if (!hidden) { sp.classList.add('stuck');
+   document.getElementById('ssub').textContent = 'التحميل طوّل أكتر من المتوقع.'; }
+}, 14000);
+
+fr.src = src;
+
+/* حماية بسيطة: أي رسالة جاية من غير نطاق جوجل بتتجاهل */
+window.addEventListener('message', function(e){
+  if (String(e.origin || '').indexOf('.google.com') < 0 &&
+      String(e.origin || '').indexOf('googleusercontent.com') < 0) return;
+  if (e.data === 'ready') hide();
+});
+</script>
+</body>
+</html>
