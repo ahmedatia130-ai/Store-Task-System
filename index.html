@@ -72,12 +72,9 @@ var APP_URL = 'https://script.google.com/macros/s/AKfycby2HVvQKQRl1hR48XaYV45ZKK
    عشان مسح الكود المطبوع يفتح شاشة الحضور مباشرة. */
 var q = location.search || '';
 
-/* شاشة الحضور بتتفتح كصفحة كاملة مش جوه إطار.
-   سفاري على الآيفون مابيديش صلاحية الموقع لإطار جوه إطار، فتسجيل الحضور
-   كان بيقول "مفيش صلاحية" مهما عملنا. التحويل ده بيحل المشكلة نهائيًا. */
-if (/[?&]qr=1(&|$)/.test(q)) {
-  location.replace(APP_URL + '?qr=1');
-}
+/* شاشة الحضور (qr=1) بقت بتفتح هنا جوه البوابة زي باقي النظام —
+   البوابة هي اللي بتجيب الموقع للتطبيق (تحت)، فالآيفون بقى شغال.
+   (قبل كده كانت بتتحوّل لصفحة جوجل مباشرة، وده ماكانش بيحل المشكلة.) */
 
 /* emb=1 بتقول للتطبيق إنه شغال جوه البورتال */
 var extra = (q ? q.slice(1) + '&' : '') + 'emb=1';
@@ -110,6 +107,34 @@ var stuckT = setTimeout(function(){
 }, 14000);
 
 fr.src = src;
+
+/* ===========================================================
+   الموقع للتطبيق
+   الآيفون (وكل متصفحاته) مابيديش الموقع لصفحة جوه إطار جوه إطار —
+   والتطبيق شغال جوه إطار جوجل اللي جوه الصفحة دي. فالتطبيق بيطلب
+   الموقع من هنا، والصفحة دي (صفحة كاملة) هي اللي بتسأل الموبايل
+   وتبعتله النتيجة. لو الطلب جاي من أي حد غير جوجل بيتجاهل.
+   =========================================================== */
+var GOOGLE_ORIGIN = /^https:\/\/([a-z0-9-]+\.)*(googleusercontent\.com|google\.com)$/i;
+window.addEventListener('message', function(e){
+  var m = e.data;
+  if (!m || typeof m !== 'object' || m.t !== '2s-geo-req' || !e.source) return;
+  if (!GOOGLE_ORIGIN.test(String(e.origin || ''))) return;
+  var to = e.source, id = String(m.id || '').slice(0, 40);
+  var send = function(o){ o.id = id; try { to.postMessage(o, '*'); } catch (x) {} };
+  send({t:'2s-geo-ack'});                       // "استلمت" — التطبيق يستنى الموقع
+  if (!navigator.geolocation) { send({t:'2s-geo', ok:false, code:2, msg:'unsupported'}); return; }
+  var ok = function(p){ send({t:'2s-geo', ok:true, lat:p.coords.latitude,
+                              lng:p.coords.longitude, acc:p.coords.accuracy}); };
+  var fail = function(er){ send({t:'2s-geo', ok:false, code:(er && er.code) || 2,
+                                 msg:(er && er.message) || ''}); };
+  /* محاولة بالـ GPS، ولو فشلت (مش رفض) محاولة تانية بالشبكة — GPS جوه المحل ضعيف */
+  navigator.geolocation.getCurrentPosition(ok, function(er){
+    if (er && er.code === 1) { fail(er); return; }  // الموظف رافض الصلاحية
+    navigator.geolocation.getCurrentPosition(ok, fail,
+      {enableHighAccuracy:false, timeout:20000, maximumAge:120000});
+  }, {enableHighAccuracy:true, timeout:15000, maximumAge:0});
+});
 
 /* حماية بسيطة: أي رسالة جاية من غير نطاق جوجل بتتجاهل */
 window.addEventListener('message', function(e){
