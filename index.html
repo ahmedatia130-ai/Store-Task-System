@@ -30,29 +30,49 @@
    display:flex;flex-direction:column;align-items:center;justify-content:center;
    padding:28px;text-align:center;transition:opacity .35s ease}
   #splash.out{opacity:0;pointer-events:none}
-  #splash img{width:112px;height:112px;object-fit:contain;background:#fff;
-   border-radius:22px;padding:10px;box-sizing:border-box}
-  #splash .nm{font-size:17px;margin-top:16px}
-  #splash .tg{font-size:12.5px;color:#f5a33c;margin-top:4px;letter-spacing:.5px}
-  #splash .sp{width:34px;height:34px;margin-top:22px;border-radius:50%;
-   border:3px solid rgba(255,255,255,.22);border-top-color:#f5a33c;
-   animation:spin .8s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  #splash .sub{font-size:12px;color:#93a6c2;margin-top:14px;max-width:320px;line-height:1.7}
+  #splash{transition:opacity .45s cubic-bezier(.22,.61,.36,1),transform .45s cubic-bezier(.22,.61,.36,1)}
+  #splash.out{transform:scale(1.04)}
+  /* لوجو 2S المتحرك: الخط بيطلع، الـ2 والـS بيتفتحوا منه، والكلمة بتظهر */
+  .bl{direction:ltr;display:inline-flex;flex-direction:column;align-items:center;font-size:84px;
+   font-family:'Segoe UI',Arial,sans-serif}
+  .bl-m{display:flex;align-items:center;gap:.2em;font-weight:300;line-height:1}
+  .bl-g{display:inline-block;color:#f5a33c;
+   background:linear-gradient(105deg,#f5a33c 42%,#ffe2b0 50%,#f5a33c 58%);background-size:260% 100%;
+   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .bl-2{animation:bl2 .6s .3s cubic-bezier(.22,1.2,.36,1) both,blShine 2.2s 1.2s ease-in-out infinite}
+  .bl-s{animation:blS .6s .38s cubic-bezier(.22,1.2,.36,1) both,blShine 2.2s 1.35s ease-in-out infinite}
+  .bl-b{display:inline-block;width:3px;height:.9em;border-radius:2px;background:#fff;
+   animation:blBar .45s cubic-bezier(.34,1.56,.64,1) both}
+  .bl-w{display:flex;gap:.7em;margin-top:.35em;font-size:.22em;letter-spacing:.32em;color:#fff}
+  .bl-w span{animation:blW .55s both}.bl-w span:first-child{animation-delay:.65s}
+  .bl-w span:last-child{animation-delay:.78s;opacity:.7}
+  .bl-l{width:1.6em;height:2px;margin-top:.45em;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
+  .bl-l i{display:block;height:100%;width:40%;border-radius:2px;background:#f5a33c;
+   animation:blLine 1.15s .85s cubic-bezier(.65,0,.35,1) infinite both}
+  @keyframes blBar{from{transform:scaleY(0);opacity:0}to{transform:none;opacity:.9}}
+  @keyframes bl2{from{transform:translateX(.55em) scale(.6);opacity:0}to{transform:none;opacity:1}}
+  @keyframes blS{from{transform:translateX(-.55em) scale(.6);opacity:0}to{transform:none;opacity:1}}
+  @keyframes blW{from{opacity:0;letter-spacing:.9em}to{opacity:1}}
+  @keyframes blShine{0%,35%{background-position:130% 0}75%,100%{background-position:-130% 0}}
+  @keyframes blLine{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
+  #splash .sub{font-size:12px;color:#93a6c2;margin-top:22px;max-width:320px;line-height:1.7;
+   opacity:0;transition:opacity .3s}
+  #splash.stuck .sub{opacity:1}
   #splash a.alt{display:none;margin-top:18px;background:#f5a33c;color:#0f2744;
    text-decoration:none;font-weight:600;font-size:13.5px;padding:11px 20px;border-radius:12px}
   #splash.stuck a.alt{display:inline-block}
-  @media(prefers-reduced-motion:reduce){#splash .sp{animation-duration:6s}}
+  @media(prefers-reduced-motion:reduce){.bl *{animation-duration:.01s!important;animation-iteration-count:1!important}}
 </style>
 </head>
 <body>
 
 <div id="splash">
-  <img src="logo.png" alt="2S Home Wear">
-  <div class="nm">2S Store Task System</div>
-  <div class="tg">أداء منظّم · جودة أعلى</div>
-  <div class="sp"></div>
-  <div class="sub" id="ssub">جاري فتح النظام…</div>
+  <div class="bl" role="status" aria-label="2S Home Wear">
+    <div class="bl-m"><span class="bl-g bl-2">2</span><span class="bl-b"></span><span class="bl-g bl-s">S</span></div>
+    <div class="bl-w"><span>HOME</span><span>WEAR</span></div>
+    <div class="bl-l"><i></i></div>
+  </div>
+  <div class="sub" id="ssub"></div>
   <a class="alt" id="alt" href="#" target="_blank" rel="noopener">افتح النظام في تاب جديد ↗</a>
 </div>
 
@@ -93,14 +113,11 @@ function hide(){
   sp.classList.add('out');
   setTimeout(function(){ if (sp.parentNode) sp.parentNode.removeChild(sp) }, 400);
 }
-fr.addEventListener('load', function(){ setTimeout(hide, 450) });
+/* اللوجو بيفضل لحد ما التطبيق نفسه يقول "جاهز" — فمفيش شاشة فاضية بينهم.
+   لو الإشارة ماجاتش (نسخة قديمة من التطبيق) بيختفي بعد ٣ ثواني من تحميل الإطار. */
+fr.addEventListener('load', function(){ setTimeout(hide, 3000) });
 
-/* أول تشغيل بعد فترة سكون جوجل بياخد ثواني — بنطمّن المستخدم،
-   ولو طوّل بنعرض زرار فتح في تاب جديد كخطة بديلة. */
-var slowT  = setTimeout(function(){
-  if (!hidden) document.getElementById('ssub').textContent =
-   'أول فتح بعد فترة سكون بياخد ثواني لحد ما جوجل يشغّل السكريبت…';
-}, 4000);
+/* لو طوّل جدًا بنعرض زرار فتح في تاب جديد كخطة بديلة */
 var stuckT = setTimeout(function(){
   if (!hidden) { sp.classList.add('stuck');
    document.getElementById('ssub').textContent = 'التحميل طوّل أكتر من المتوقع.'; }
