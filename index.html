@@ -61,6 +61,19 @@
   #splash a.alt{display:none;margin-top:18px;background:#f5a33c;color:#0f2744;
    text-decoration:none;font-weight:600;font-size:13.5px;padding:11px 20px;border-radius:12px}
   #splash.stuck a.alt{display:inline-block}
+
+  /* شريط «فعّل الإشعارات» — بيظهر تحت بعد الدخول لو الإشعارات لسه مش متفعّلة */
+  #pushBar{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:8;
+   max-width:460px;margin:0 auto;background:#0f2744;color:#fff;border:1px solid rgba(245,163,60,.55);
+   border-radius:16px;padding:12px 14px;display:none;align-items:center;gap:10px;
+   box-shadow:0 18px 40px -12px rgba(0,0,0,.55);font-size:13.5px;line-height:1.6}
+  #pushBar.on{display:flex;animation:pbIn .35s cubic-bezier(.22,.61,.36,1) both}
+  #pushBar .ic{font-size:22px;flex-shrink:0}
+  #pushBar .tx{flex:1}
+  #pushBar button{border:0;border-radius:11px;font:inherit;cursor:pointer}
+  #pushBar .go{background:#f5a33c;color:#0f2744;font-weight:700;padding:9px 14px;white-space:nowrap}
+  #pushBar .x{background:none;color:#93a6c2;font-size:18px;padding:4px 6px;line-height:1}
+  @keyframes pbIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
   @media(prefers-reduced-motion:reduce){.bl *{animation-duration:.01s!important;animation-iteration-count:1!important}}
 </style>
 </head>
@@ -81,6 +94,12 @@
         allow="geolocation *; clipboard-write *; fullscreen *"
         allowfullscreen
         referrerpolicy="no-referrer"></iframe>
+
+<div id="pushBar" role="dialog" aria-live="polite">
+  <span class="ic">🔔</span><span class="tx" id="pushTx"></span>
+  <button class="go" id="pushGo" type="button"></button>
+  <button class="x" id="pushX" type="button" aria-label="close">×</button>
+</div>
 
 <script>
 /* ===========================================================
@@ -151,6 +170,94 @@ window.addEventListener('message', function(e){
     navigator.geolocation.getCurrentPosition(ok, fail,
       {enableHighAccuracy:false, timeout:20000, maximumAge:120000});
   }, {enableHighAccuracy:true, timeout:15000, maximumAge:0});
+});
+
+/* ===========================================================
+   إشعارات الموبايل حتى والتطبيق مقفول (Firebase)
+   التطبيق بعد الدخول بيبعتلنا إعدادات Firebase. الصفحة دي (صفحة كاملة)
+   هي اللي تقدر تسجّل الـ service worker (push-sw.js) وتطلب الإذن —
+   وبعدها بتبعت للتطبيق «عنوان» الموبايل عشان يتحفظ على السيرفر.
+   =========================================================== */
+var PUSH = {cfg:null, vapid:'', lang:'ar', src:null, fb:null, busy:false};
+var FB_VER = '10.12.2';
+var PTX = {
+  ar:{ask:'فعّل الإشعارات عشان توصلك المهام والتنبيهات حتى والأبلكيشن مقفول.', go:'فعّل',
+      ios:'عشان الإشعارات توصلك على الآيفون: دوس زرار المشاركة ⬆︎ ← «إضافة إلى الشاشة الرئيسية»، وافتح الأبلكيشن من هناك.', ok:'تمام',
+      denied:'الإشعارات مقفولة للموقع ده من إعدادات الموبايل — افتحها من إعدادات المتصفح لو عاوزها.'},
+  en:{ask:'Turn on notifications to get tasks and alerts even when the app is closed.', go:'Turn on',
+      ios:'To get notifications on iPhone: tap Share ⬆︎ → “Add to Home Screen”, then open the app from there.', ok:'OK',
+      denied:'Notifications are blocked for this site in your phone settings — allow them in the browser settings if you want them.'}
+};
+var bar = document.getElementById('pushBar');
+function L(){ return PTX[PUSH.lang === 'en' ? 'en' : 'ar']; }
+function snoozed(k){ try { return Date.now() < Number(localStorage.getItem('2s-push-snooze-' + k) || 0); } catch (x) { return false; } }
+function snooze(k, days){ try { localStorage.setItem('2s-push-snooze-' + k, String(Date.now() + days * 864e5)); } catch (x) {} }
+function showBar(kind){
+  if (snoozed(kind)) return;
+  var d = L();
+  document.getElementById('pushTx').textContent = kind === 'ios' ? d.ios : d.ask;
+  var go = document.getElementById('pushGo');
+  go.textContent = kind === 'ios' ? d.ok : d.go;
+  go.onclick = function(){ if (kind === 'ios') { snooze('ios', 7); hideBar(); } else askPush(); };
+  document.getElementById('pushX').onclick = function(){ snooze(kind, 3); hideBar(); };
+  bar.dir = PUSH.lang === 'en' ? 'ltr' : 'rtl';
+  bar.classList.add('on');
+}
+function hideBar(){ bar.classList.remove('on'); }
+function pushOK(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+function isIOS(){ return /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+function standalone(){ try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (x) { return false; } }
+function loadFB(cb){
+  if (window.firebase && firebase.messaging) return cb();
+  var base = 'https://www.gstatic.com/firebasejs/' + FB_VER + '/';
+  var one = function(f, next){ var s = document.createElement('script'); s.src = base + f; s.onload = next;
+    s.onerror = function(){ PUSH.busy = false; }; document.head.appendChild(s); };
+  one('firebase-app-compat.js', function(){ one('firebase-messaging-compat.js', cb); });
+}
+function sendTok(tok){
+  if (!tok || !PUSH.src) return;
+  try { PUSH.src.postMessage({t:'2s-push-token', token:tok}, '*'); } catch (x) {}
+}
+function getTok(){
+  if (PUSH.busy || !PUSH.cfg) return; PUSH.busy = true;
+  loadFB(function(){
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(PUSH.cfg);
+      navigator.serviceWorker.register('push-sw.js').then(function(reg){
+        return firebase.messaging().getToken({vapidKey:PUSH.vapid, serviceWorkerRegistration:reg});
+      }).then(function(tok){ PUSH.busy = false; sendTok(tok); hideBar(); })
+        .catch(function(){ PUSH.busy = false; });
+    } catch (x) { PUSH.busy = false; }
+  });
+}
+function askPush(){
+  hideBar();
+  var p;
+  try { p = Notification.requestPermission(); } catch (x) { p = null; }
+  var done = function(r){ if (r === 'granted') getTok(); else if (r === 'denied') { /* مافيش حاجة نعملها */ } };
+  if (p && p.then) p.then(done); else Notification.requestPermission(done);
+}
+function pushStart(){
+  if (!pushOK()) { if (isIOS() && !standalone()) showBar('ios'); return; }
+  if (Notification.permission === 'granted') getTok();
+  else if (Notification.permission === 'default') showBar('ask');
+}
+function pushOff(){
+  hideBar();
+  try { if (window.firebase && firebase.apps.length && firebase.messaging) firebase.messaging().deleteToken().catch(function(){}); } catch (x) {}
+}
+window.addEventListener('message', function(e){
+  var m = e.data;
+  if (!m || typeof m !== 'object' || !e.source) return;
+  if (!GOOGLE_ORIGIN.test(String(e.origin || ''))) return;
+  if (m.t === '2s-push-cfg' && m.cfg && typeof m.cfg === 'object' && typeof m.vapid === 'string') {
+    PUSH.src = e.source; PUSH.lang = m.lang === 'en' ? 'en' : 'ar';
+    PUSH.cfg = {apiKey:String(m.cfg.apiKey || ''), authDomain:String(m.cfg.authDomain || ''),
+                projectId:String(m.cfg.projectId || ''), messagingSenderId:String(m.cfg.messagingSenderId || ''),
+                appId:String(m.cfg.appId || '')};
+    PUSH.vapid = m.vapid;
+    pushStart();
+  } else if (m.t === '2s-push-off') pushOff();
 });
 
 /* حماية بسيطة: أي رسالة جاية من غير نطاق جوجل بتتجاهل */
