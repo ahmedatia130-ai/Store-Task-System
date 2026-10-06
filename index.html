@@ -260,6 +260,32 @@ window.addEventListener('message', function(e){
   } else if (m.t === '2s-push-off') pushOff();
 });
 
+/* ===========================================================
+   «افضل داخل لحد ما أعمل خروج»
+   الآيفون ممكن يمسح تخزين الإطار الداخلي، ورابط جوجل الداخلي بيتغير مع كل نسخة.
+   فالتطبيق بيحفظ نسخة من الجلسة هنا (عند البوابة — دي الصفحة اللي الموبايل
+   بيحفظها كأبلكيشن)، ولو فتح من غير جلسة بيسألنا عليها.
+   =========================================================== */
+var SESS_KEY = '2s-sess';
+window.addEventListener('message', function(e){
+  var m = e.data;
+  if (!m || typeof m !== 'object' || !e.source) return;
+  if (!GOOGLE_ORIGIN.test(String(e.origin || ''))) return;
+  try {
+    if (m.t === '2s-sess-save' && m.s && typeof m.s === 'object' && m.s.tok) {
+      localStorage.setItem(SESS_KEY, JSON.stringify(m.s));
+    } else if (m.t === '2s-sess-clear') {
+      var cur = JSON.parse(localStorage.getItem(SESS_KEY) || 'null');
+      if (!m.tok || !cur || cur.tok === m.tok) localStorage.removeItem(SESS_KEY);
+    } else if (m.t === '2s-sess-get') {
+      var s = JSON.parse(localStorage.getItem(SESS_KEY) || 'null');
+      e.source.postMessage({t:'2s-sess', s:s}, '*');
+    }
+  } catch (x) {
+    if (m.t === '2s-sess-get') { try { e.source.postMessage({t:'2s-sess', s:null}, '*'); } catch (y) {} }
+  }
+});
+
 /* حماية بسيطة: أي رسالة جاية من غير نطاق جوجل بتتجاهل */
 window.addEventListener('message', function(e){
   if (String(e.origin || '').indexOf('.google.com') < 0 &&
