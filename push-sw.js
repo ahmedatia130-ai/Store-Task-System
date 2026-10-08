@@ -18,7 +18,14 @@ self.addEventListener('push', function(e){
     vibrate: [80, 40, 80],
     data: {url: './'}
   };
-  e.waitUntil(self.registration.showNotification(title, opt));
+  /* v59: لو الأبلكيشن مفتوح، نبلّغه يجيب الجديد فورًا */
+  var ping = null;
+  try {
+    ping = self.clients.matchAll({type:'window', includeUncontrolled:true}).then(function(list){
+      list.forEach(function(c){ try { c.postMessage({t:'2s-ping'}); } catch (x) {} });
+    }).catch(function(){});
+  } catch (x) { ping = null; }
+  e.waitUntil(ping ? Promise.all([self.registration.showNotification(title, opt), ping]) : self.registration.showNotification(title, opt));
 });
 
 self.addEventListener('notificationclick', function(e){
