@@ -63,16 +63,16 @@
   #splash.stuck a.alt{display:inline-block}
 
   /* شريط «فعّل الإشعارات» — بيظهر تحت بعد الدخول لو الإشعارات لسه مش متفعّلة */
-  #pushBar{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:8;
+  #pushBar,#bioBar{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:8;
    max-width:460px;margin:0 auto;background:#0f2744;color:#fff;border:1px solid rgba(245,163,60,.55);
    border-radius:16px;padding:12px 14px;display:none;align-items:center;gap:10px;
    box-shadow:0 18px 40px -12px rgba(0,0,0,.55);font-size:13.5px;line-height:1.6}
-  #pushBar.on{display:flex;animation:pbIn .35s cubic-bezier(.22,.61,.36,1) both}
-  #pushBar .ic{font-size:22px;flex-shrink:0}
-  #pushBar .tx{flex:1}
-  #pushBar button{border:0;border-radius:11px;font:inherit;cursor:pointer}
-  #pushBar .go{background:#f5a33c;color:#0f2744;font-weight:700;padding:9px 14px;white-space:nowrap}
-  #pushBar .x{background:none;color:#93a6c2;font-size:18px;padding:4px 6px;line-height:1}
+  #pushBar.on,#bioBar.on{display:flex;animation:pbIn .35s cubic-bezier(.22,.61,.36,1) both}
+  #pushBar .ic,#bioBar .ic{font-size:22px;flex-shrink:0}
+  #pushBar .tx,#bioBar .tx{flex:1}
+  #pushBar button,#bioBar button{border:0;border-radius:11px;font:inherit;cursor:pointer}
+  #pushBar .go,#bioBar .go{background:#f5a33c;color:#0f2744;font-weight:700;padding:9px 14px;white-space:nowrap}
+  #pushBar .x,#bioBar .x{background:none;color:#93a6c2;font-size:18px;padding:4px 6px;line-height:1}
   @keyframes pbIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
   @media(prefers-reduced-motion:reduce){.bl *{animation-duration:.01s!important;animation-iteration-count:1!important}}
 </style>
@@ -94,6 +94,12 @@
         allow="geolocation *; clipboard-write *; fullscreen *"
         allowfullscreen
         referrerpolicy="no-referrer"></iframe>
+
+<div id="bioBar" role="dialog" aria-live="polite">
+  <span class="ic">👆</span><span class="tx" id="bioTx"></span>
+  <button class="go" id="bioGo" type="button"></button>
+  <button class="x" id="bioX" type="button" aria-label="close">×</button>
+</div>
 
 <div id="pushBar" role="dialog" aria-live="polite">
   <span class="ic">🔔</span><span class="tx" id="pushTx"></span>
@@ -267,6 +273,108 @@ try {
     if (m && m.t === '2s-ping' && PUSH.src) { try { PUSH.src.postMessage({t:'2s-ping'}, '*'); } catch (x) {} }
   });
 } catch (x) {}
+
+/* ===========================================================
+   v62: الدخول بالبصمة على نفس الموبايل
+   البصمة نفسها بيتأكد منها الموبايل (Face ID / بصمة الصباع) هنا في البوابة
+   (الصفحة الكاملة — جوجل مابيسمحش بيها جوه إطاره). بعد أول دخول بالباسورد،
+   الموبايل بيحفظ «مفتاح جهاز» من السيرفر، ومايطلّعوش للتطبيق غير بعد ما
+   البصمة تنجح. البصمة نفسها مابتتبعتش لأي حد.
+   =========================================================== */
+var BIO = {src:null, lang:'ar', pend:null, busy:false};
+var BIO_KEY = '2s-bio';
+var BTX = {
+  ar:{offer:'تحب تدخل بالبصمة المرة الجاية على الموبايل ده؟', on:'فعّل', login:'ادخل بالبصمة', as:'ادخل بالبصمة كـ {n}',
+      fail:'البصمة ماتأكدتش — جرّب تاني أو ادخل بالباسورد', done:'البصمة اتفعّلت ✓'},
+  en:{offer:'Sign in with your fingerprint next time on this phone?', on:'Turn on', login:'Use fingerprint', as:'Sign in as {n} with fingerprint',
+      fail:'Fingerprint not confirmed — try again or use your password', done:'Fingerprint sign-in is on ✓'}
+};
+var bbar = document.getElementById('bioBar');
+function BL(){ return BTX[BIO.lang === 'en' ? 'en' : 'ar']; }
+function bioAll(){ try { var a = JSON.parse(localStorage.getItem(BIO_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (x) { return []; } }
+function bioPut(a){ try { localStorage.setItem(BIO_KEY, JSON.stringify(a.slice(-3))); } catch (x) {} }
+function bioSup(cb){
+  try {
+    if (!window.PublicKeyCredential || !navigator.credentials || !window.isSecureContext) return cb(false);
+    PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(function(v){ cb(!!v); }, function(){ cb(false); });
+  } catch (x) { cb(false); }
+}
+function rnd(n){ var a = new Uint8Array(n); crypto.getRandomValues(a); return a; }
+function b64u(buf){ var b = new Uint8Array(buf), s = ''; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function unb64u(t){ t = String(t).replace(/-/g,'+').replace(/_/g,'/'); while (t.length % 4) t += '=';
+  var s = atob(t), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+function bioSend(o){ if (BIO.src) try { BIO.src.postMessage(o, '*'); } catch (x) {} }
+function bioShow(txt, go, fn, onX){
+  document.getElementById('bioTx').textContent = txt;
+  var g = document.getElementById('bioGo'); g.textContent = go; g.onclick = fn;
+  document.getElementById('bioX').onclick = function(){ bioHide(); if (onX) onX(); };
+  bbar.dir = BIO.lang === 'en' ? 'ltr' : 'rtl';
+  hideBar(); bbar.classList.add('on');
+}
+function bioHide(){ bbar.classList.remove('on'); }
+/* تفعيل: الموبايل بيعمل «مفتاح بصمة» للموقع ده (البصمة مطلوبة) */
+function bioMake(empId, name){
+  if (BIO.busy) return; BIO.busy = true; bioHide();
+  var enc = new TextEncoder();
+  navigator.credentials.create({publicKey:{
+    challenge: rnd(32), rp:{name:'2S Home Wear'},
+    user:{id: enc.encode(String(empId)).slice(0, 64), name: String(name || empId), displayName: String(name || empId)},
+    pubKeyCredParams:[{type:'public-key', alg:-7}, {type:'public-key', alg:-257}],
+    authenticatorSelection:{authenticatorAttachment:'platform', userVerification:'required', residentKey:'discouraged'},
+    timeout:60000, attestation:'none'}})
+  .then(function(c){ BIO.busy = false; if (!c) return;
+    BIO.pend = {e:String(empId), n:String(name || ''), c:b64u(c.rawId)};
+    bioSend({t:'2s-bio-made', empId:String(empId)}); })
+  .catch(function(){ BIO.busy = false; });
+}
+/* دخول: البصمة الأول — ولو نجحت بس، مفتاح الجهاز بيروح للتطبيق */
+function bioGet(rec){
+  if (BIO.busy) return; BIO.busy = true; bioHide();
+  navigator.credentials.get({publicKey:{challenge: rnd(32), allowCredentials:[{type:'public-key', id: unb64u(rec.c)}],
+    userVerification:'required', timeout:60000}})
+  .then(function(a){ BIO.busy = false; if (!a) return;
+    bioSend({t:'2s-bio-ok', empId:rec.e, bk:rec.k}); })
+  .catch(function(){ BIO.busy = false; bioSend({t:'2s-bio-fail'}); bioLoginBar(); });
+}
+function bioLoginBar(){
+  var a = bioAll(); if (!a.length) return;
+  bioSup(function(ok){ if (!ok) return;
+    var r = a[a.length - 1], d = BL();
+    bioShow(d.as.replace('{n}', r.n || r.e), d.login, function(){ bioGet(r); });
+  });
+}
+window.addEventListener('message', function(e){
+  var m = e.data;
+  if (!m || typeof m !== 'object' || !e.source) return;
+  if (!GOOGLE_ORIGIN.test(String(e.origin || ''))) return;
+  if (typeof m.t !== 'string' || m.t.indexOf('2s-bio') !== 0) return;
+  BIO.src = e.source; if (m.lang) BIO.lang = m.lang === 'en' ? 'en' : 'ar';
+  if (m.t === '2s-bio-q') {                       // شاشة الدخول ظهرت
+    var a = bioAll();
+    bioSup(function(ok){ bioSend({t:'2s-bio-st', sup:ok, has:a.length > 0}); if (ok && a.length) bioLoginBar(); });
+  } else if (m.t === '2s-bio-hide') {
+    bioHide();
+  } else if (m.t === '2s-bio-offer') {           // دخل بالباسورد — نعرض التفعيل
+    var id = String(m.empId || ''), has = bioAll().some(function(r){ return r.e === id; });
+    bioSup(function(ok){
+      bioSend({t:'2s-bio-st', sup:ok, has:has});
+      if (!ok || has || !id) return;
+      if (!m.force && snoozed('bio-' + id)) return;
+      var d = BL();
+      bioShow(d.offer, d.on, function(){ bioMake(id, m.name); }, function(){ snooze('bio-' + id, 14); });
+    });
+  } else if (m.t === '2s-bio-save') {            // السيرفر اداله مفتاح جهاز
+    if (BIO.pend && BIO.pend.e === String(m.empId) && typeof m.bk === 'string' && m.bk.length >= 20) {
+      var r = BIO.pend; r.k = m.bk; BIO.pend = null;
+      bioPut(bioAll().filter(function(x){ return x.e !== r.e; }).concat([r]));
+      bioSend({t:'2s-bio-st', sup:true, has:true, saved:true});
+    }
+  } else if (m.t === '2s-bio-del') {
+    bioPut(bioAll().filter(function(x){ return x.e !== String(m.empId); }));
+    bioSend({t:'2s-bio-st', sup:true, has:false});
+  }
+});
 
 /* ===========================================================
    «افضل داخل لحد ما أعمل خروج»
