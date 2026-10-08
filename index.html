@@ -259,6 +259,14 @@ window.addEventListener('message', function(e){
     pushStart();
   } else if (m.t === '2s-push-off') pushOff();
 });
+/* v59: إشعار وصل للموبايل والأبلكيشن مفتوح → نبلّغ الأبلكيشن يحدّث فورًا
+   (بدل ما يستنى دورة المزامنة الجاية) */
+try {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function(e){
+    var m = e.data;
+    if (m && m.t === '2s-ping' && PUSH.src) { try { PUSH.src.postMessage({t:'2s-ping'}, '*'); } catch (x) {} }
+  });
+} catch (x) {}
 
 /* ===========================================================
    «افضل داخل لحد ما أعمل خروج»
