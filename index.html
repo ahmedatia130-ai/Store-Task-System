@@ -404,6 +404,44 @@ window.addEventListener('message', function(e){
   }
 });
 
+/* ===========================================================
+   v65: الآيفون (الأبلكيشن من الشاشة الرئيسية)
+   - الشريط اللي فوق (الساعة والبطارية) كان بيغطي أول التطبيق:
+     الإطار بقى يبدأ تحت الشريط، والمكان ده بيبان كحلي زي لون التطبيق.
+   - كان فيه شريط كحلي فاضي تحت: الآيفون بيحسب 100% أقصر من الشاشة
+     في الوضع ده. دلوقتي ارتفاع الإطار بيتحسب بالبكسل.
+   - مقاس خط الرجوع اللي تحت بيتبعت للتطبيق عشان أزراره ماتتحطش تحته.
+   على أندرويد والكمبيوتر الأرقام دي صفر فمفيش أي تغيير.
+   =========================================================== */
+var SAFE = {b:0, src:null};
+var spr = document.createElement('div');
+spr.style.cssText = 'position:fixed;left:0;top:0;width:1px;visibility:hidden;pointer-events:none;' +
+  'height:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)';
+document.body.appendChild(spr);
+function fit(){
+  var cs = getComputedStyle(spr),
+      st = Math.round(parseFloat(cs.height) || 0),
+      sb = Math.round(parseFloat(cs.paddingBottom) || 0),
+      h = window.innerHeight;
+  if (navigator.standalone) {                      // ارتفاع الشاشة الحقيقي (الآيفون بيدّي أقل)
+    var land = window.innerWidth > window.innerHeight,
+        sh = land ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
+    if (sh > h) h = sh;
+  }
+  fr.style.top = st + 'px'; fr.style.bottom = 'auto'; fr.style.height = Math.max(0, h - st) + 'px';
+  if (sb !== SAFE.b) { SAFE.b = sb; safeSend(); }
+}
+function safeSend(){ if (SAFE.src) try { SAFE.src.postMessage({t:'2s-safe', b:SAFE.b}, '*'); } catch (x) {} }
+fit();
+window.addEventListener('resize', fit);
+window.addEventListener('orientationchange', function(){ setTimeout(fit, 350); });
+window.addEventListener('message', function(e){
+  var m = e.data;
+  if (!m || typeof m !== 'object' || m.t !== '2s-safe-q' || !e.source) return;
+  if (!GOOGLE_ORIGIN.test(String(e.origin || ''))) return;
+  SAFE.src = e.source; safeSend();
+});
+
 /* حماية بسيطة: أي رسالة جاية من غير نطاق جوجل بتتجاهل */
 window.addEventListener('message', function(e){
   if (String(e.origin || '').indexOf('.google.com') < 0 &&
