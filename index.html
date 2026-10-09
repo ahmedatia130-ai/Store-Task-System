@@ -352,7 +352,9 @@ window.addEventListener('message', function(e){
   BIO.src = e.source; if (m.lang) BIO.lang = m.lang === 'en' ? 'en' : 'ar';
   if (m.t === '2s-bio-q') {                       // شاشة الدخول ظهرت
     var a = bioAll();
-    bioSup(function(ok){ bioSend({t:'2s-bio-st', sup:ok, has:a.length > 0}); if (ok && a.length) bioLoginBar(); });
+    bioSup(function(ok){ bioSend({t:'2s-bio-st', sup:ok, has:a.length > 0}); if (ok && a.length && !m.icon) bioLoginBar(); });
+  } else if (m.t === '2s-bio-go') {              // v63: دوسة على علامة البصمة جنب «دخول»
+    var g = bioAll(); if (g.length) bioGet(g[g.length - 1]); else bioSend({t:'2s-bio-st', sup:true, has:false});
   } else if (m.t === '2s-bio-hide') {
     bioHide();
   } else if (m.t === '2s-bio-offer') {           // دخل بالباسورد — نعرض التفعيل
