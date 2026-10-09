@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f2744">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="2S Store Task System">
 <meta name="robots" content="noindex">
 <meta name="referrer" content="no-referrer">
@@ -23,7 +23,8 @@
 <style>
   html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0f2744;
    font-family:'Segoe UI',Tahoma,Arial,sans-serif}
-  #frame{position:fixed;inset:0;width:100%;height:100%;border:0;display:block;background:#f4f6fa}
+  /* v66: الإطار عمره ما يدخل تحت شريط الساعة — حتى لو الجافاسكريبت اتأخر */
+  #frame{position:fixed;left:0;right:0;top:0;top:env(safe-area-inset-top,0px);bottom:0;width:100%;height:auto;border:0;display:block;background:#f4f6fa}
 
   /* شاشة التحميل — بتختفي أول ما التطبيق يفتح */
   #splash{position:fixed;inset:0;background:#0f2744;color:#fff;z-index:9;
@@ -418,12 +419,18 @@ var spr = document.createElement('div');
 spr.style.cssText = 'position:fixed;left:0;top:0;width:1px;visibility:hidden;pointer-events:none;' +
   'height:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)';
 document.body.appendChild(spr);
+function isApp(){
+  try { if (navigator.standalone) return true; } catch (x) {}
+  try { return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches; } catch (x) { return false; }
+}
 function fit(){
   var cs = getComputedStyle(spr),
       st = Math.round(parseFloat(cs.height) || 0),
       sb = Math.round(parseFloat(cs.paddingBottom) || 0),
-      h = window.innerHeight;
-  if (navigator.standalone) {                      // ارتفاع الشاشة الحقيقي (الآيفون بيدّي أقل)
+      h = window.innerHeight || document.documentElement.clientHeight || 0;
+  /* الشريط اللي فوق شفاف (نسخة متسطبة قبل كده) ⇒ الآيفون بيحسب الصفحة أقصر من الشاشة
+     بطول الشريط ده — فبناخد طول الشاشة الحقيقي */
+  if (st > 0 && isApp()) {
     var land = window.innerWidth > window.innerHeight,
         sh = land ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
     if (sh > h) h = sh;
@@ -433,8 +440,14 @@ function fit(){
 }
 function safeSend(){ if (SAFE.src) try { SAFE.src.postMessage({t:'2s-safe', b:SAFE.b}, '*'); } catch (x) {} }
 fit();
+/* الآيفون أحيانًا بيدّي مقاس الشريط متأخر بعد الفتح — نعيد الحساب كذا مرة */
+[60, 250, 600, 1200, 2500].forEach(function(ms){ setTimeout(fit, ms); });
+window.addEventListener('load', fit);
+window.addEventListener('pageshow', fit);
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) { fit(); setTimeout(fit, 400); } });
 window.addEventListener('resize', fit);
-window.addEventListener('orientationchange', function(){ setTimeout(fit, 350); });
+if (window.visualViewport) visualViewport.addEventListener('resize', fit);
+window.addEventListener('orientationchange', function(){ setTimeout(fit, 350); setTimeout(fit, 900); });
 window.addEventListener('message', function(e){
   var m = e.data;
   if (!m || typeof m !== 'object' || m.t !== '2s-safe-q' || !e.source) return;
