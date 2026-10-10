@@ -159,10 +159,22 @@ fr.src = src;
    وتبعتله النتيجة. لو الطلب جاي من أي حد غير جوجل بيتجاهل.
    =========================================================== */
 var GOOGLE_ORIGIN = /^https:\/\/([a-z0-9-]+\.)*(googleusercontent\.com|google\.com)$/i;
+/* v70: أي رسالة لازم تكون جاية من الأبلكيشن اللي جوه الإطار ده نفسه —
+   مش من أي صفحة جوجل تانية (صفحة تانية كانت تقدر تفتح البوابة وتطلب الجلسة أو البصمة) */
+function fromApp(e){
+  if (!e || !GOOGLE_ORIGIN.test(String(e.origin || ''))) return false;
+  var f = document.getElementById('frame'), fw = f && f.contentWindow, w = e.source;
+  if (!w || !fw) return false;
+  for (var i = 0; i < 8 && w; i++) {
+    if (w === fw) return true;
+    try { if (w === w.parent) return false; w = w.parent; } catch (x) { return false; }
+  }
+  return false;
+}
 window.addEventListener('message', function(e){
   var m = e.data;
   if (!m || typeof m !== 'object' || m.t !== '2s-geo-req' || !e.source) return;
-  if (!GOOGLE_ORIGIN.test(String(e.origin || ''))) return;
+  if (!fromApp(e)) return;
   var to = e.source, id = String(m.id || '').slice(0, 40);
   var send = function(o){ o.id = id; try { to.postMessage(o, '*'); } catch (x) {} };
   send({t:'2s-geo-ack'});                       // "استلمت" — التطبيق يستنى الموقع
@@ -256,7 +268,7 @@ function pushOff(){
 window.addEventListener('message', function(e){
   var m = e.data;
   if (!m || typeof m !== 'object' || !e.source) return;
-  if (!GOOGLE_ORIGIN.test(String(e.origin || ''))) return;
+  if (!fromApp(e)) return;
   if (m.t === '2s-push-cfg' && m.cfg && typeof m.cfg === 'object' && typeof m.vapid === 'string') {
     PUSH.src = e.source; PUSH.lang = m.lang === 'en' ? 'en' : 'ar';
     PUSH.cfg = {apiKey:String(m.cfg.apiKey || ''), authDomain:String(m.cfg.authDomain || ''),
@@ -348,7 +360,7 @@ function bioLoginBar(){
 window.addEventListener('message', function(e){
   var m = e.data;
   if (!m || typeof m !== 'object' || !e.source) return;
-  if (!GOOGLE_ORIGIN.test(String(e.origin || ''))) return;
+  if (!fromApp(e)) return;
   if (typeof m.t !== 'string' || m.t.indexOf('2s-bio') !== 0) return;
   BIO.src = e.source; if (m.lang) BIO.lang = m.lang === 'en' ? 'en' : 'ar';
   if (m.t === '2s-bio-q') {                       // شاشة الدخول ظهرت
@@ -389,7 +401,7 @@ var SESS_KEY = '2s-sess';
 window.addEventListener('message', function(e){
   var m = e.data;
   if (!m || typeof m !== 'object' || !e.source) return;
-  if (!GOOGLE_ORIGIN.test(String(e.origin || ''))) return;
+  if (!fromApp(e)) return;
   try {
     if (m.t === '2s-sess-save' && m.s && typeof m.s === 'object' && m.s.tok) {
       localStorage.setItem(SESS_KEY, JSON.stringify(m.s));
@@ -398,7 +410,7 @@ window.addEventListener('message', function(e){
       if (!m.tok || !cur || cur.tok === m.tok) localStorage.removeItem(SESS_KEY);
     } else if (m.t === '2s-sess-get') {
       var s = JSON.parse(localStorage.getItem(SESS_KEY) || 'null');
-      e.source.postMessage({t:'2s-sess', s:s}, '*');
+      e.source.postMessage({t:'2s-sess', s:s}, e.origin);
     }
   } catch (x) {
     if (m.t === '2s-sess-get') { try { e.source.postMessage({t:'2s-sess', s:null}, '*'); } catch (y) {} }
@@ -451,8 +463,31 @@ window.addEventListener('orientationchange', function(){ setTimeout(fit, 350); s
 window.addEventListener('message', function(e){
   var m = e.data;
   if (!m || typeof m !== 'object' || m.t !== '2s-safe-q' || !e.source) return;
-  if (!GOOGLE_ORIGIN.test(String(e.origin || ''))) return;
+  if (!fromApp(e)) return;
   SAFE.src = e.source; safeSend();
+});
+
+/* v67: زرار الرجوع في الموبايل — بدل ما يخرج من الأبلكيشن، بنسأل الأبلكيشن الأول:
+   لو فيه نافذة مفتوحة أو صفحة قبلها يرجع لها. على الرئيسية بس: الضغطة التانية بتخرج. */
+var BACK = { src: null, wait: null, re: null };
+function backLvl(){ try { var s = history.state; return (s && s.b2s) ? s.b2s : 0; } catch (x) { return 0; } }
+function backArm(){ clearTimeout(BACK.re); if (backLvl() === 0) try { history.pushState({ b2s: 1 }, '', location.href); } catch (x) {} }
+window.addEventListener('message', function(e){
+  var m = e.data;
+  if (!m || typeof m !== 'object' || !e.source) return;
+  if (m.t !== '2s-back-on' && m.t !== '2s-back-r') return;
+  if (!fromApp(e)) return;
+  if (m.t === '2s-back-on') { BACK.src = e.source; if (!BACK.wait) backArm(); return; }
+  clearTimeout(BACK.wait); BACK.wait = null;
+  if (m.done) backArm();
+  else { clearTimeout(BACK.re); BACK.re = setTimeout(backArm, 2500); }   // ضغطة كمان خلال ثانيتين ونص = خروج
+});
+window.addEventListener('popstate', function(){
+  if (!BACK.src || backLvl() > 0) return;
+  clearTimeout(BACK.re);
+  try { BACK.src.postMessage({ t: '2s-back' }, '*'); } catch (x) {}
+  clearTimeout(BACK.wait);
+  BACK.wait = setTimeout(function(){ BACK.wait = null; }, 1200);   // الأبلكيشن مارَدّش ← نسيب الرجوع عادي
 });
 
 /* حماية بسيطة: أي رسالة جاية من غير نطاق جوجل بتتجاهل */
