@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f2744">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="2S Store Task System">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>2S — نسخة تجريبية</title>
+
+<link rel="icon" href="../favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="../favicon-16.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../favicon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="../favicon-512.png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<!-- النسخة التجريبية مالهاش manifest عشان ماتتثبتش مكان الأصلية -->
+
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0f2744;
+   font-family:'Segoe UI',Tahoma,Arial,sans-serif}
+  /* v66: الإطار عمره ما يدخل تحت شريط الساعة — حتى لو الجافاسكريبت اتأخر */
+  #frame{position:fixed;left:0;right:0;top:0;top:env(safe-area-inset-top,0px);bottom:0;width:100%;height:auto;border:0;display:block;background:#f4f6fa}
+
+  /* شاشة التحميل — بتختفي أول ما التطبيق يفتح */
+  #splash{position:fixed;inset:0;background:#0f2744;color:#fff;z-index:9;
+   display:flex;flex-direction:column;align-items:center;justify-content:center;
+   padding:28px;text-align:center;transition:opacity .35s ease}
+  #splash.out{opacity:0;pointer-events:none}
+  #splash{transition:opacity .45s cubic-bezier(.22,.61,.36,1),transform .45s cubic-bezier(.22,.61,.36,1)}
+  #splash.out{transform:scale(1.04)}
+  /* لوجو 2S المتحرك: الخط بيطلع، الـ2 والـS بيتفتحوا منه، والكلمة بتظهر */
+  .bl{direction:ltr;display:inline-flex;flex-direction:column;align-items:center;font-size:84px;
+   font-family:'Segoe UI',Arial,sans-serif}
+  .bl-m{display:flex;align-items:center;gap:.2em;font-weight:300;line-height:1}
+  .bl-g{display:inline-block;color:#f5a33c;
+   background:linear-gradient(105deg,#f5a33c 42%,#ffe2b0 50%,#f5a33c 58%);background-size:260% 100%;
+   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .bl-2{animation:bl2 .6s .3s cubic-bezier(.22,1.2,.36,1) both,blShine 2.2s 1.2s ease-in-out infinite}
+  .bl-s{animation:blS .6s .38s cubic-bezier(.22,1.2,.36,1) both,blShine 2.2s 1.35s ease-in-out infinite}
+  .bl-b{display:inline-block;width:3px;height:.9em;border-radius:2px;background:#fff;
+   animation:blBar .45s cubic-bezier(.34,1.56,.64,1) both}
+  .bl-w{display:flex;gap:.7em;margin-top:.35em;font-size:.22em;letter-spacing:.32em;color:#fff}
+  .bl-w span{animation:blW .55s both}.bl-w span:first-child{animation-delay:.65s}
+  .bl-w span:last-child{animation-delay:.78s;opacity:.7}
+  .bl-l{width:1.6em;height:2px;margin-top:.45em;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
+  .bl-l i{display:block;height:100%;width:40%;border-radius:2px;background:#f5a33c;
+   animation:blLine 1.15s .85s cubic-bezier(.65,0,.35,1) infinite both}
+  @keyframes blBar{from{transform:scaleY(0);opacity:0}to{transform:none;opacity:.9}}
+  @keyframes bl2{from{transform:translateX(.55em) scale(.6);opacity:0}to{transform:none;opacity:1}}
+  @keyframes blS{from{transform:translateX(-.55em) scale(.6);opacity:0}to{transform:none;opacity:1}}
+  @keyframes blW{from{opacity:0;letter-spacing:.9em}to{opacity:1}}
+  @keyframes blShine{0%,35%{background-position:130% 0}75%,100%{background-position:-130% 0}}
+  @keyframes blLine{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
+  #splash .sub{font-size:12px;color:#93a6c2;margin-top:22px;max-width:320px;line-height:1.7;
+   opacity:0;transition:opacity .3s}
+  #splash.stuck .sub{opacity:1}
+  #splash a.alt{display:none;margin-top:18px;background:#f5a33c;color:#0f2744;
+   text-decoration:none;font-weight:600;font-size:13.5px;padding:11px 20px;border-radius:12px}
+  #splash.stuck a.alt{display:inline-block}
+
+  /* شريط «فعّل الإشعارات» — بيظهر تحت بعد الدخول لو الإشعارات لسه مش متفعّلة */
+  #pushBar,#bioBar{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:8;
+   max-width:460px;margin:0 auto;background:#0f2744;color:#fff;border:1px solid rgba(245,163,60,.55);
+   border-radius:16px;padding:12px 14px;display:none;align-items:center;gap:10px;
+   box-shadow:0 18px 40px -12px rgba(0,0,0,.55);font-size:13.5px;line-height:1.6}
+  #pushBar.on,#bioBar.on{display:flex;animation:pbIn .35s cubic-bezier(.22,.61,.36,1) both}
+  #pushBar .ic,#bioBar .ic{font-size:22px;flex-shrink:0}
+  #pushBar .tx,#bioBar .tx{flex:1}
+  #pushBar button,#bioBar button{border:0;border-radius:11px;font:inherit;cursor:pointer}
+  #pushBar .go,#bioBar .go{background:#f5a33c;color:#0f2744;font-weight:700;padding:9px 14px;white-space:nowrap}
+  #pushBar .x,#bioBar .x{background:none;color:#93a6c2;font-size:18px;padding:4px 6px;line-height:1}
+  @keyframes pbIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){.bl *{animation-duration:.01s!important;animation-iteration-count:1!important}}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="bl" role="status" aria-label="2S Home Wear">
+    <div class="bl-m"><span class="bl-g bl-2">2</span><span class="bl-b"></span><span class="bl-g bl-s">S</span></div>
+    <div class="bl-w"><span>HOME</span><span>WEAR</span></div>
+    <div class="bl-l"><i></i></div>
+  </div>
+  <div class="sub" id="ssub"></div>
+  <a class="alt" id="alt" href="#" target="_blank" rel="noopener">افتح النظام في تاب جديد ↗</a>
+</div>
+
+<iframe id="frame"
+        title="2S Store Task System"
+        allow="geolocation *; clipboard-write *; fullscreen *"
+        allowfullscreen
+        referrerpolicy="no-referrer"></iframe>
+
+<div id="bioBar" role="dialog" aria-live="polite">
+  <span class="ic">👆</span><span class="tx" id="bioTx"></span>
+  <button class="go" id="bioGo" type="button"></button>
+  <button class="x" id="bioX" type="button" aria-label="close">×</button>
+</div>
+
+<div id="pushBar" role="dialog" aria-live="polite">
+  <span class="ic">🔔</span><span class="tx" id="pushTx"></span>
+  <button class="go" id="pushGo" type="button"></button>
+  <button class="x" id="pushX" type="button" aria-label="close">×</button>
+</div>
+
+<script>
+/* ===========================================================
+   رابط تطبيق الويب (Apps Script) — غيّره هنا بس لو عملت Deploy جديد
+   =========================================================== */
+/* النسخة التجريبية: التطبيق جاي من Supabase (app.html) مش من Apps Script */
+var APP_URL = 'app.html';
+
+/* بنمرّر باراميترات الرابط زي ما هي (?qr=1 بتاع كود الحضور)
+   عشان مسح الكود المطبوع يفتح شاشة الحضور مباشرة. */
+var q = location.search || '';
+
+/* شاشة الحضور (qr=1) بقت بتفتح هنا جوه البوابة زي باقي النظام —
+   البوابة هي اللي بتجيب الموقع للتطبيق (تحت)، فالآيفون بقى شغال.
+   (قبل كده كانت بتتحوّل لصفحة جوجل مباشرة، وده ماكانش بيحل المشكلة.) */
+
+/* emb=1 بتقول للتطبيق إنه شغال جوه البورتال */
+var extra = (q ? q.slice(1) + '&' : '') + 'emb=1';
+var src = APP_URL + (APP_URL.indexOf('?') >= 0 ? '&' : '?') + extra;
+
+var fr = document.getElementById('frame');
+var sp = document.getElementById('splash');
+var alt = document.getElementById('alt');
+alt.href = src;
+
+var hidden = false;
+function hide(){
+  if (hidden) return;
+  hidden = true;
+  clearTimeout(stuckT);
+  sp.classList.add('out');
+  setTimeout(function(){ if (sp.parentNode) sp.parentNode.removeChild(sp) }, 400);
+}
+/* اللوجو بيفضل لحد ما التطبيق نفسه يقول "جاهز" — فمفيش شاشة فاضية بينهم.
+   لو الإشارة ماجاتش (نسخة قديمة من التطبيق) بيختفي بعد ٣ ثواني من تحميل الإطار. */
+fr.addEventListener('load', function(){ setTimeout(hide, 3000) });
+
+/* لو طوّل جدًا بنعرض زرار فتح في تاب جديد كخطة بديلة */
+var stuckT = setTimeout(function(){
+  if (!hidden) { sp.classList.add('stuck');
+   document.getElementById('ssub').textContent = 'التحميل طوّل أكتر من المتوقع.'; }
+}, 14000);
+
+fr.src = src;
+
+/* ===========================================================
+   الموقع للتطبيق
+   الآيفون (وكل متصفحاته) مابيديش الموقع لصفحة جوه إطار جوه إطار —
+   والتطبيق شغال جوه إطار جوجل اللي جوه الصفحة دي. فالتطبيق بيطلب
+   الموقع من هنا، والصفحة دي (صفحة كاملة) هي اللي بتسأل الموبايل
+   وتبعتله النتيجة. لو الطلب جاي من أي حد غير جوجل بيتجاهل.
+   =========================================================== */
+var GOOGLE_ORIGIN = { test: function(o){ return o === location.origin; } };   // التجريبية: التطبيق من نفس الموقع
+/* v70: أي رسالة لازم تكون جاية من الأبلكيشن اللي جوه الإطار ده نفسه —
+   مش من أي صفحة جوجل تانية (صفحة تانية كانت تقدر تفتح البوابة وتطلب الجلسة أو البصمة) */
+function fromApp(e){
+  if (!e || !GOOGLE_ORIGIN.test(String(e.origin || ''))) return false;
+  var f = document.getElementById('frame'), fw = f && f.contentWindow, w = e.source;
+  if (!w || !fw) return false;
+  for (var i = 0; i < 8 && w; i++) {
+    if (w === fw) return true;
+    try { if (w === w.parent) return false; w = w.parent; } catch (x) { return false; }
+  }
+  return false;
+}
+window.addEventListener('message', function(e){
+  var m = e.data;
+  if (!m || typeof m !== 'object' || m.t !== '2s-geo-req' || !e.source) return;
+  if (!fromApp(e)) return;
+  var to = e.source, id = String(m.id || '').slice(0, 40);
+  var send = function(o){ o.id = id; try { to.postMessage(o, '*'); } catch (x) {} };
+  send({t:'2s-geo-ack'});                       // "استلمت" — التطبيق يستنى الموقع
+  if (!navigator.geolocation) { send({t:'2s-geo', ok:false, code:2, msg:'unsupported'}); return; }
+  var ok = function(p){ send({t:'2s-geo', ok:true, lat:p.coords.latitude,
+                              lng:p.coords.longitude, acc:p.coords.accuracy}); };
+  var fail = function(er){ send({t:'2s-geo', ok:false, code:(er && er.code) || 2,
+                                 msg:(er && er.message) || ''}); };
+  /* محاولة بالـ GPS، ولو فشلت (مش رفض) محاولة تانية بالشبكة — GPS جوه المحل ضعيف */
+  navigator.geolocation.getCurrentPosition(ok, function(er){
+    if (er && er.code === 1) { fail(er); return; }  // الموظف رافض الصلاحية
+    navigator.geolocation.getCurrentPosition(ok, fail,
+      {enableHighAccuracy:false, timeout:20000, maximumAge:120000});
+  }, {enableHighAccuracy:true, timeout:15000, maximumAge:0});
+});
+
+/* ===========================================================
+   إشعارات الموبايل حتى والتطبيق مقفول (Firebase)
+   التطبيق بعد الدخول بيبعتلنا إعدادات Firebase. الصفحة دي (صفحة كاملة)
+   هي اللي تقدر تسجّل الـ service worker (push-sw.js) وتطلب الإذن —
+   وبعدها بتبعت للتطبيق «عنوان» الموبايل عشان يتحفظ على السيرفر.
+   =========================================================== */
+var PUSH = {cfg:null, vapid:'', lang:'ar', src:null, fb:null, busy:false};
+var FB_VER = '10.12.2';
+var PTX = {
+  ar:{ask:'فعّل الإشعارات عشان توصلك المهام والتنبيهات حتى والأبلكيشن مقفول.', go:'فعّل',
+      ios:'عشان الإشعارات توصلك على الآيفون: دوس زرار المشاركة ⬆︎ ← «إضافة إلى الشاشة الرئيسية»، وافتح الأبلكيشن من هناك.', ok:'تمام',
+      denied:'الإشعارات مقفولة للموقع ده من إعدادات الموبايل — افتحها من إعدادات المتصفح لو عاوزها.'},
+  en:{ask:'Turn on notifications to get tasks and alerts even when the app is closed.', go:'Turn on',
+      ios:'To get notifications on iPhone: tap Share ⬆︎ → “Add to Home Screen”, then open the app from there.', ok:'OK',
+      denied:'Notifications are blocked for this site in your phone settings — allow them in the browser settings if you want them.'}
+};
+var bar = document.getElementById('pushBar');
+function L(){ return PTX[PUSH.lang === 'en' ? 'en' : 'ar']; }
+function snoozed(k){ try { return Date.now() < Number(localStorage.getItem('2s-beta-push-snooze-' + k) || 0); } catch (x) { return false; } }
+function snooze(k, days){ try { localStorage.setItem('2s-beta-push-snooze-' + k, String(Date.now() + days * 864e5)); } catch (x) {} }
+function showBar(kind){
+  if (snoozed(kind)) return;
+  var d = L();
+  document.getElementById('pushTx').textContent = kind === 'ios' ? d.ios : d.ask;
+  var go = document.getElementById('pushGo');
+  go.textContent = kind === 'ios' ? d.ok : d.go;
+  go.onclick = function(){ if (kind === 'ios') { snooze('ios', 7); hideBar(); } else askPush(); };
+  document.getElementById('pushX').onclick = function(){ snooze(kind, 3); hideBar(); };
+  bar.dir = PUSH.lang === 'en' ? 'ltr' : 'rtl';
+  bar.classList.add('on');
+}
+function hideBar(){ bar.classList.remove('on'); }
+function pushOK(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+function isIOS(){ return /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+function standalone(){ try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (x) { return false; } }
+function loadFB(cb){
+  if (window.firebase && firebase.messaging) return cb();
+  var base = 'https://www.gstatic.com/firebasejs/' + FB_VER + '/';
+  var one = function(f, next){ var s = document.createElement('script'); s.src = base + f; s.onload = next;
+    s.onerror = function(){ PUSH.busy = false; }; document.head.appendChild(s); };
+  one('firebase-app-compat.js', function(){ one('firebase-messaging-compat.js', cb); });
+}
+function sendTok(tok){
+  if (!tok || !PUSH.src) return;
+  try { PUSH.src.postMessage({t:'2s-push-token', token:tok}, '*'); } catch (x) {}
+}
+function getTok(){
+  if (PUSH.busy || !PUSH.cfg) return; PUSH.busy = true;
+  loadFB(function(){
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(PUSH.cfg);
+      navigator.serviceWorker.register('../push-sw.js').then(function(reg){
+        return firebase.messaging().getToken({vapidKey:PUSH.vapid, serviceWorkerRegistration:reg});
+      }).then(function(tok){ PUSH.busy = false; sendTok(tok); hideBar(); })
+        .catch(function(){ PUSH.busy = false; });
+    } catch (x) { PUSH.busy = false; }
+  });
+}
+function askPush(){
+  hideBar();
+  var p;
+  try { p = Notification.requestPermission(); } catch (x) { p = null; }
+  var done = function(r){ if (r === 'granted') getTok(); else if (r === 'denied') { /* مافيش حاجة نعملها */ } };
+  if (p && p.then) p.then(done); else Notification.requestPermission(done);
+}
+function pushStart(){
+  if (!pushOK()) { if (isIOS() && !standalone()) showBar('ios'); return; }
+  if (Notification.permission === 'granted') getTok();
+  else if (Notification.permission === 'default') showBar('ask');
+}
+function pushOff(){
+  hideBar();
+  try { if (window.firebase && firebase.apps.length && firebase.messaging) firebase.messaging().deleteToken().catch(function(){}); } catch (x) {}
+}
+window.addEventListener('message', function(e){
+  var m = e.data;
+  if (!m || typeof m !== 'object' || !e.source) return;
+  if (!fromApp(e)) return;
+  if (m.t === '2s-push-cfg' && m.cfg && typeof m.cfg === 'object' && typeof m.vapid === 'string') {
+    PUSH.src = e.source; PUSH.lang = m.lang === 'en' ? 'en' : 'ar';
+    PUSH.cfg = {apiKey:String(m.cfg.apiKey || ''), authDomain:String(m.cfg.authDomain || ''),
+                projectId:String(m.cfg.projectId || ''), messagingSenderId:String(m.cfg.messagingSenderId || ''),
+                appId:String(m.cfg.appId || '')};
+    PUSH.vapid = m.vapid;
+    pushStart();
+  } else if (m.t === '2s-push-off') pushOff();
+});
+/* v59: إشعار وصل للموبايل والأبلكيشن مفتوح → نبلّغ الأبلكيشن يحدّث فورًا
+   (بدل ما يستنى دورة المزامنة الجاية) */
+try {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function(e){
+    var m = e.data;
+    if (m && m.t === '2s-ping' && PUSH.src) { try { PUSH.src.postMessage({t:'2s-ping'}, '*'); } catch (x) {} }
+  });
+} catch (x) {}
+
+/* ===========================================================
+   v62: الدخول بالبصمة على نفس الموبايل
+   البصمة نفسها بيتأكد منها الموبايل (Face ID / بصمة الصباع) هنا في البوابة
+   (الصفحة الكاملة — جوجل مابيسمحش بيها جوه إطاره). بعد أول دخول بالباسورد،
+   الموبايل بيحفظ «مفتاح جهاز» من السيرفر، ومايطلّعوش للتطبيق غير بعد ما
+   البصمة تنجح. البصمة نفسها مابتتبعتش لأي حد.
+   =========================================================== */
+var BIO = {src:null, lang:'ar', pend:null, busy:false};
+var BIO_KEY = '2s-beta-bio';
+var BTX = {
+  ar:{offer:'تحب تدخل بالبصمة المرة الجاية على الموبايل ده؟', on:'فعّل', login:'ادخل بالبصمة', as:'ادخل بالبصمة كـ {n}',
+      fail:'البصمة ماتأكدتش — جرّب تاني أو ادخل بالباسورد', done:'البصمة اتفعّلت ✓'},
+  en:{offer:'Sign in with your fingerprint next time on this phone?', on:'Turn on', login:'Use fingerprint', as:'Sign in as {n} with fingerprint',
+      fail:'Fingerprint not confirmed — try again or use your password', done:'Fingerprint sign-in is on ✓'}
+};
+var bbar = document.getElementById('bioBar');
+function BL(){ return BTX[BIO.lang === 'en' ? 'en' : 'ar']; }
+function bioAll(){ try { var a = JSON.parse(localStorage.getItem(BIO_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (x) { return []; } }
+function bioPut(a){ try { localStorage.setItem(BIO_KEY, JSON.stringify(a.slice(-3))); } catch (x) {} }
+function bioSup(cb){
+  try {
+    if (!window.PublicKeyCredential || !navigator.credentials || !window.isSecureContext) return cb(false);
+    PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(function(v){ cb(!!v); }, function(){ cb(false); });
+  } catch (x) { cb(false); }
+}
+function rnd(n){ var a = new Uint8Array(n); crypto.getRandomValues(a); return a; }
+function b64u(buf){ var b = new Uint8Array(buf), s = ''; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function unb64u(t){ t = String(t).replace(/-/g,'+').replace(/_/g,'/'); while (t.length % 4) t += '=';
+  var s = atob(t), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+function bioSend(o){ if (BIO.src) try { BIO.src.postMessage(o, '*'); } catch (x) {} }
+function bioShow(txt, go, fn, onX){
+  document.getElementById('bioTx').textContent = txt;
+  var g = document.getElementById('bioGo'); g.textContent = go; g.onclick = fn;
+  document.getElementById('bioX').onclick = function(){ bioHide(); if (onX) onX(); };
+  bbar.dir = BIO.lang === 'en' ? 'ltr' : 'rtl';
+  hideBar(); bbar.classList.add('on');
+}
+function bioHide(){ bbar.classList.remove('on'); }
+/* تفعيل: الموبايل بيعمل «مفتاح بصمة» للموقع ده (البصمة مطلوبة) */
+function bioMake(empId, name){
+  if (BIO.busy) return; BIO.busy = true; bioHide();
+  var enc = new TextEncoder();
+  navigator.credentials.create({publicKey:{
+    challenge: rnd(32), rp:{name:'2S Home Wear'},
+    user:{id: enc.encode(String(empId)).slice(0, 64), name: String(name || empId), displayName: String(name || empId)},
+    pubKeyCredParams:[{type:'public-key', alg:-7}, {type:'public-key', alg:-257}],
+    authenticatorSelection:{authenticatorAttachment:'platform', userVerification:'required', residentKey:'discouraged'},
+    timeout:60000, attestation:'none'}})
+  .then(function(c){ BIO.busy = false; if (!c) return;
+    BIO.pend = {e:String(empId), n:String(name || ''), c:b64u(c.rawId)};
+    bioSend({t:'2s-bio-made', empId:String(empId)}); })
+  .catch(function(){ BIO.busy = false; });
+}
+/* دخول: البصمة الأول — ولو نجحت بس، مفتاح الجهاز بيروح للتطبيق */
+function bioGet(rec){
+  if (BIO.busy) return; BIO.busy = true; bioHide();
+  navigator.credentials.get({publicKey:{challenge: rnd(32), allowCredentials:[{type:'public-key', id: unb64u(rec.c)}],
+    userVerification:'required', timeout:60000}})
+  .then(function(a){ BIO.busy = false; if (!a) return;
+    bioSend({t:'2s-bio-ok', empId:rec.e, bk:rec.k}); })
+  .catch(function(){ BIO.busy = false; bioSend({t:'2s-bio-fail'}); bioLoginBar(); });
+}
+function bioLoginBar(){
+  var a = bioAll(); if (!a.length) return;
+  bioSup(function(ok){ if (!ok) return;
+    var r = a[a.length - 1], d = BL();
+    bioShow(d.as.replace('{n}', r.n || r.e), d.login, function(){ bioGet(r); });
+  });
+}
+window.addEventListener('message', function(e){
+  var m = e.data;
+  if (!m || typeof m !== 'object' || !e.source) return;
+  if (!fromApp(e)) return;
+  if (typeof m.t !== 'string' || m.t.indexOf('2s-bio') !== 0) return;
+  BIO.src = e.source; if (m.lang) BIO.lang = m.lang === 'en' ? 'en' : 'ar';
+  if (m.t === '2s-bio-q') {                       // شاشة الدخول ظهرت
+    var a = bioAll();
+    bioSup(function(ok){ bioSend({t:'2s-bio-st', sup:ok, has:a.length > 0}); if (ok && a.length && !m.icon) bioLoginBar(); });
+  } else if (m.t === '2s-bio-go') {              // v63: دوسة على علامة البصمة جنب «دخول»
+    var g = bioAll(); if (g.length) bioGet(g[g.length - 1]); else bioSend({t:'2s-bio-st', sup:true, has:false});
+  } else if (m.t === '2s-bio-hide') {
+    bioHide();
+  } else if (m.t === '2s-bio-offer') {           // دخل بالباسورد — نعرض التفعيل
+    var id = String(m.empId || ''), has = bioAll().some(function(r){ return r.e === id; });
+    bioSup(function(ok){
+      bioSend({t:'2s-bio-st', sup:ok, has:has});
+      if (!ok || has || !id) return;
+      if (!m.force && snoozed('bio-' + id)) return;
+      var d = BL();
+      bioShow(d.offer, d.on, function(){ bioMake(id, m.name); }, function(){ snooze('bio-' + id, 14); });
+    });
+  } else if (m.t === '2s-bio-save') {            // السيرفر اداله مفتاح جهاز
+    if (BIO.pend && BIO.pend.e === String(m.empId) && typeof m.bk === 'string' && m.bk.length >= 20) {
+      var r = BIO.pend; r.k = m.bk; BIO.pend = null;
+      bioPut(bioAll().filter(function(x){ return x.e !== r.e; }).concat([r]));
+      bioSend({t:'2s-bio-st', sup:true, has:true, saved:true});
+    }
+  } else if (m.t === '2s-bio-del') {
+    bioPut(bioAll().filter(function(x){ return x.e !== String(m.empId); }));
+    bioSend({t:'2s-bio-st', sup:true, has:false});
+  }
+});
+
+/* ===========================================================
+   «افضل داخل لحد ما أعمل خروج»
+   الآيفون ممكن يمسح تخزين الإطار الداخلي، ورابط جوجل الداخلي بيتغير مع كل نسخة.
+   فالتطبيق بيحفظ نسخة من الجلسة هنا (عند البوابة — دي الصفحة اللي الموبايل
+   بيحفظها كأبلكيشن)، ولو فتح من غير جلسة بيسألنا عليها.
+   =========================================================== */
+var SESS_KEY = '2s-beta-sess';
+window.addEventListener('message', function(e){
+  var m = e.data;
+  if (!m || typeof m !== 'object' || !e.source) return;
+  if (!fromApp(e)) return;
+  try {
+    if (m.t === '2s-sess-save' && m.s && typeof m.s === 'object' && m.s.tok) {
+      localStorage.setItem(SESS_KEY, JSON.stringify(m.s));
+    } else if (m.t === '2s-sess-clear') {
+      var cur = JSON.parse(localStorage.getItem(SESS_KEY) || 'null');
+      if (!m.tok || !cur || cur.tok === m.tok) localStorage.removeItem(SESS_KEY);
+    } else if (m.t === '2s-sess-get') {
+      var s = JSON.parse(localStorage.getItem(SESS_KEY) || 'null');
+      e.source.postMessage({t:'2s-sess', s:s}, e.origin);
+    }
+  } catch (x) {
+    if (m.t === '2s-sess-get') { try { e.source.postMessage({t:'2s-sess', s:null}, '*'); } catch (y) {} }
+  }
+});
+
+/* ===========================================================
+   v65: الآيفون (الأبلكيشن من الشاشة الرئيسية)
+   - الشريط اللي فوق (الساعة والبطارية) كان بيغطي أول التطبيق:
+     الإطار بقى يبدأ تحت الشريط، والمكان ده بيبان كحلي زي لون التطبيق.
+   - كان فيه شريط كحلي فاضي تحت: الآيفون بيحسب 100% أقصر من الشاشة
+     في الوضع ده. دلوقتي ارتفاع الإطار بيتحسب بالبكسل.
+   - مقاس خط الرجوع اللي تحت بيتبعت للتطبيق عشان أزراره ماتتحطش تحته.
+   على أندرويد والكمبيوتر الأرقام دي صفر فمفيش أي تغيير.
+   =========================================================== */
+var SAFE = {b:0, src:null};
+var spr = document.createElement('div');
+spr.style.cssText = 'position:fixed;left:0;top:0;width:1px;visibility:hidden;pointer-events:none;' +
+  'height:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)';
+document.body.appendChild(spr);
+function isApp(){
+  try { if (navigator.standalone) return true; } catch (x) {}
+  try { return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches; } catch (x) { return false; }
+}
+function fit(){
+  var cs = getComputedStyle(spr),
+      st = Math.round(parseFloat(cs.height) || 0),
+      sb = Math.round(parseFloat(cs.paddingBottom) || 0),
+      h = window.innerHeight || document.documentElement.clientHeight || 0;
+  /* الشريط اللي فوق شفاف (نسخة متسطبة قبل كده) ⇒ الآيفون بيحسب الصفحة أقصر من الشاشة
+     بطول الشريط ده — فبناخد طول الشاشة الحقيقي */
+  if (st > 0 && isApp()) {
+    var land = window.innerWidth > window.innerHeight,
+        sh = land ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
+    if (sh > h) h = sh;
+  }
+  fr.style.top = st + 'px'; fr.style.bottom = 'auto'; fr.style.height = Math.max(0, h - st) + 'px';
+  if (sb !== SAFE.b) { SAFE.b = sb; safeSend(); }
+}
+function safeSend(){ if (SAFE.src) try { SAFE.src.postMessage({t:'2s-safe', b:SAFE.b}, '*'); } catch (x) {} }
+fit();
+/* الآيفون أحيانًا بيدّي مقاس الشريط متأخر بعد الفتح — نعيد الحساب كذا مرة */
+[60, 250, 600, 1200, 2500].forEach(function(ms){ setTimeout(fit, ms); });
+window.addEventListener('load', fit);
+window.addEventListener('pageshow', fit);
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) { fit(); setTimeout(fit, 400); } });
+window.addEventListener('resize', fit);
+if (window.visualViewport) visualViewport.addEventListener('resize', fit);
+window.addEventListener('orientationchange', function(){ setTimeout(fit, 350); setTimeout(fit, 900); });
+window.addEventListener('message', function(e){
+  var m = e.data;
+  if (!m || typeof m !== 'object' || m.t !== '2s-safe-q' || !e.source) return;
+  if (!fromApp(e)) return;
+  SAFE.src = e.source; safeSend();
+});
+
+/* v67: زرار الرجوع في الموبايل — بدل ما يخرج من الأبلكيشن، بنسأل الأبلكيشن الأول:
+   لو فيه نافذة مفتوحة أو صفحة قبلها يرجع لها. على الرئيسية بس: الضغطة التانية بتخرج. */
+var BACK = { src: null, wait: null, re: null };
+function backLvl(){ try { var s = history.state; return (s && s.b2s) ? s.b2s : 0; } catch (x) { return 0; } }
+function backArm(){ clearTimeout(BACK.re); if (backLvl() === 0) try { history.pushState({ b2s: 1 }, '', location.href); } catch (x) {} }
+window.addEventListener('message', function(e){
+  var m = e.data;
+  if (!m || typeof m !== 'object' || !e.source) return;
+  if (m.t !== '2s-back-on' && m.t !== '2s-back-r') return;
+  if (!fromApp(e)) return;
+  if (m.t === '2s-back-on') { BACK.src = e.source; if (!BACK.wait) backArm(); return; }
+  clearTimeout(BACK.wait); BACK.wait = null;
+  if (m.done) backArm();
+  else { clearTimeout(BACK.re); BACK.re = setTimeout(backArm, 2500); }   // ضغطة كمان خلال ثانيتين ونص = خروج
+});
+window.addEventListener('popstate', function(){
+  if (!BACK.src || backLvl() > 0) return;
+  clearTimeout(BACK.re);
+  try { BACK.src.postMessage({ t: '2s-back' }, '*'); } catch (x) {}
+  clearTimeout(BACK.wait);
+  BACK.wait = setTimeout(function(){ BACK.wait = null; }, 1200);   // الأبلكيشن مارَدّش ← نسيب الرجوع عادي
+});
+
+/* حماية بسيطة: أي رسالة جاية من غير نطاق جوجل بتتجاهل */
+window.addEventListener('message', function(e){
+  if (e.origin !== location.origin) return;   // التجريبية: التطبيق من نفس الموقع
+  if (e.data === 'ready') hide();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex"><title>2S</title>
+<style>html,body{margin:0;background:#f4f6fa;font-family:Tahoma,Arial,sans-serif}#err{display:none;padding:24px;color:#b42318;text-align:center;line-height:1.8}</style>
+</head><body><div id="err"></div>
+<script>
+/* النسخة التجريبية: بيجيب صفحة التطبيق من Supabase (بدل Apps Script)
+   ويحط google.script.run بديل بيكلم السيرفر الجديد. Index.html نفسه مابيتغيّرش. */
+var API = 'https://ydrzwhafmfdhdowdruqz.supabase.co/functions/v1/api';
+function post(body){
+  return fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    .then(function(r){ return r.json(); });
+}
+var SHIM = '<script>(function(){var API=' + JSON.stringify(API) + ';' +
+  'function mk(s,f,u){return new Proxy({},{get:function(_,k){' +
+  'if(k==="withSuccessHandler")return function(h){return mk(h,f,u)};' +
+  'if(k==="withFailureHandler")return function(h){return mk(s,h,u)};' +
+  'if(k==="withUserObject")return function(o){return mk(s,f,o)};' +
+  'return function(){var a=[].slice.call(arguments);' +
+  'fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({f:k,a:a})})' +
+  '.then(function(r){return r.json()}).then(function(j){if(j&&j.ok){if(s)s(j.r,u)}else{var e=new Error(j&&j.e||"Server error");if(f)f(e,u)}})' +
+  '.catch(function(e){if(f)f(e,u)})}}})}' +
+  'window.google={script:{run:mk(null,null,undefined),host:{close:function(){},setHeight:function(){},setWidth:function(){}}}};})();<\/script>';
+var params = {};
+new URLSearchParams(location.search).forEach(function(v, k){ params[k] = v; });
+post({ page: true, params: params }).then(function(j){
+  if (!j || !j.ok || !j.html) throw new Error(j && j.e || 'empty page');
+  var h = j.html, k = h.indexOf('<head>');
+  h = k < 0 ? SHIM + h : h.slice(0, k + 6) + SHIM + h.slice(k + 6);
+  document.open(); document.write(h); document.close();
+}).catch(function(e){
+  var d = document.getElementById('err'); d.style.display = 'block';
+  d.textContent = 'مقدرناش نفتح النسخة التجريبية: ' + (e && e.message || e);
+});
+</script></body></html>
