@@ -8,8 +8,9 @@
 /* النسخة التجريبية: بيجيب صفحة التطبيق من Supabase (بدل Apps Script)
    ويحط google.script.run بديل بيكلم السيرفر الجديد. Index.html نفسه مابيتغيّرش. */
 var API = 'https://ydrzwhafmfdhdowdruqz.supabase.co/functions/v1/api';
+// text/plain عشان المتصفح مايعملش طلب استئذان (preflight) قبل كل طلب، فكل طلب بيروح مرة واحدة بس
 function post(body){
-  return fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+  return fetch(API, { method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body) })
     .then(function(r){ return r.json(); });
 }
 var SHIM = '<script>(function(){var API=' + JSON.stringify(API) + ';' +
@@ -18,7 +19,7 @@ var SHIM = '<script>(function(){var API=' + JSON.stringify(API) + ';' +
   'if(k==="withFailureHandler")return function(h){return mk(s,h,u)};' +
   'if(k==="withUserObject")return function(o){return mk(s,f,o)};' +
   'return function(){var a=[].slice.call(arguments);' +
-  'fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({f:k,a:a})})' +
+  'fetch(API,{method:"POST",headers:{"content-type":"text/plain;charset=UTF-8"},body:JSON.stringify({f:k,a:a})})' +
   '.then(function(r){return r.json()}).then(function(j){if(j&&j.ok){if(s)s(j.r,u)}else{var e=new Error(j&&j.e||"Server error");if(f)f(e,u)}})' +
   '.catch(function(e){if(f)f(e,u)})}}})}' +
   'window.google={script:{run:mk(null,null,undefined),host:{close:function(){},setHeight:function(){},setWidth:function(){}}}};})();<\/script>';
