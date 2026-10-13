@@ -112,7 +112,8 @@
 /* ===========================================================
    رابط تطبيق الويب (Apps Script) — غيّره هنا بس لو عملت Deploy جديد
    =========================================================== */
-var APP_URL = 'https://script.google.com/macros/s/AKfycby2HVvQKQRl1hR48XaYV45ZKKDwX8RsSftvlSseD5n5e52UOAeqVFBT70UdKhsJW-tX/exec';
+/* التطبيق بقى شغال على Supabase (app.html). النسخة القديمة على Apps Script موجودة في old/ احتياطي */
+var APP_URL = 'app.html';
 
 /* بنمرّر باراميترات الرابط زي ما هي (?qr=1 بتاع كود الحضور)
    عشان مسح الكود المطبوع يفتح شاشة الحضور مباشرة. */
@@ -158,7 +159,7 @@ fr.src = src;
    الموقع من هنا، والصفحة دي (صفحة كاملة) هي اللي بتسأل الموبايل
    وتبعتله النتيجة. لو الطلب جاي من أي حد غير جوجل بيتجاهل.
    =========================================================== */
-var GOOGLE_ORIGIN = /^https:\/\/([a-z0-9-]+\.)*(googleusercontent\.com|google\.com)$/i;
+var GOOGLE_ORIGIN = { test: function(o){ return o === location.origin; } };   // التطبيق من نفس الموقع
 /* v70: أي رسالة لازم تكون جاية من الأبلكيشن اللي جوه الإطار ده نفسه —
    مش من أي صفحة جوجل تانية (صفحة تانية كانت تقدر تفتح البوابة وتطلب الجلسة أو البصمة) */
 function fromApp(e){
@@ -492,8 +493,7 @@ window.addEventListener('popstate', function(){
 
 /* حماية بسيطة: أي رسالة جاية من غير نطاق جوجل بتتجاهل */
 window.addEventListener('message', function(e){
-  if (String(e.origin || '').indexOf('.google.com') < 0 &&
-      String(e.origin || '').indexOf('googleusercontent.com') < 0) return;
+  if (e.origin !== location.origin) return;   // التطبيق من نفس الموقع
   if (e.data === 'ready') hide();
 });
 </script>
