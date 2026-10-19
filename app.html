@@ -5,33 +5,108 @@
 <style>html,body{margin:0;background:#f4f6fa;font-family:Tahoma,Arial,sans-serif}#err{display:none;padding:24px;color:#b42318;text-align:center;line-height:1.8}</style>
 </head><body><div id="err"></div>
 <script>
-/* النسخة التجريبية: بيجيب صفحة التطبيق من Supabase (بدل Apps Script)
-   ويحط google.script.run بديل بيكلم السيرفر الجديد. Index.html نفسه مابيتغيّرش. */
+/* بيجيب صفحة التطبيق من Supabase (بدل Apps Script) ويحط google.script.run بديل
+   بيكلم السيرفر الجديد. Index.html نفسه مابيتغيّرش. */
 var API = 'https://ydrzwhafmfdhdowdruqz.supabase.co/functions/v1/api';
-// text/plain عشان المتصفح مايعملش طلب استئذان (preflight) قبل كل طلب، فكل طلب بيروح مرة واحدة بس
-function post(body){
-  return fetch(API, { method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body) })
-    .then(function(r){ return r.json(); });
+
+/* أكتر من فرع على نفس اللينك: الفرع محفوظ في الموبايل (2s-branch) وبيتبعت مع كل طلب.
+   - الموظف: أول دخول السيرفر بيعرف فرعه من اسمه ويرجّعه، والموبايل بيفتكره.
+   - الأدمن: زرار «🏬» صغير يبدّل بين الفروع.
+   - كل فرع ليه تخزين لوحده في الموبايل (الجلسة، آخر اسم دخول ...)، فالجلسات مابتتلخبطش. */
+function shim(API){
+  var DEF = '2s', BK = '2s-branch', AK = '2s-admin';
+  var S = Storage.prototype, get0 = S.getItem, set0 = S.setItem, rm0 = S.removeItem;
+  function cur(){ try { return get0.call(localStorage, BK) || DEF; } catch (e) { return DEF; } }
+  var BR = cur();
+  function ns(k){ k = String(k); return BR === DEF || k === BK || k === AK ? k : 'br:' + BR + ':' + k; }
+  S.getItem = function(k){ return get0.call(this, ns(k)); };
+  S.setItem = function(k, v){ return set0.call(this, ns(k), v); };
+  S.removeItem = function(k){ return rm0.call(this, ns(k)); };
+  function setBranch(b){ BR = b; try { set0.call(localStorage, BK, b); } catch (e) {} }
+  function seen(j){
+    if (j && j.b && j.b !== BR) setBranch(j.b);
+    var emp = j && j.r && j.r.ok && j.r.employee;
+    if (emp && j.r.token) { try { set0.call(localStorage, AK, emp.role === 'admin' ? '1' : ''); } catch (e) {} pill(); }
+  }
+  function call(f, a, s, fl, u){
+    fetch(API, { method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ f: f, a: a, b: BR }) })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        seen(j);
+        if (j && j.ok) { if (s) s(j.r, u); }
+        else { var e = new Error(j && j.e || 'Server error'); if (fl) fl(e, u); }
+      })
+      .catch(function(e){ if (fl) fl(e, u); });
+  }
+  function mk(s, f, u){
+    return new Proxy({}, { get: function(_, k){
+      if (k === 'withSuccessHandler') return function(h){ return mk(h, f, u); };
+      if (k === 'withFailureHandler') return function(h){ return mk(s, h, u); };
+      if (k === 'withUserObject') return function(o){ return mk(s, f, o); };
+      return function(){ call(k, [].slice.call(arguments), s, f, u); };
+    } });
+  }
+  window.google = { script: { run: mk(null, null, undefined), host: { close: function(){}, setHeight: function(){}, setWidth: function(){} } } };
+
+  /* زرار الفروع للأدمن بس */
+  var LIST = null;
+  function reload(){ try { if (window.top !== window.self && window.top.location.host === location.host) { window.top.location.reload(); return; } } catch (e) {} location.reload(); }
+  function pill(){
+    var on = false; try { on = get0.call(localStorage, AK) === '1'; } catch (e) {}
+    var el = document.getElementById('brPill');
+    if (!on) { if (el) el.remove(); return; }
+    if (!document.body) return;
+    if (!el) {
+      el = document.createElement('button'); el.id = 'brPill'; el.type = 'button';
+      el.style.cssText = 'position:fixed;left:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);z-index:99990;border:0;border-radius:16px;' +
+        'background:rgba(15,32,60,.88);color:#fff;font:bold 12px/1 Tahoma,Arial;padding:8px 11px;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer';
+      el.onclick = menu; document.body.appendChild(el);
+    }
+    var nm = BR; (LIST || []).forEach(function(x){ if (x.id === BR) nm = x.name; });
+    el.textContent = '🏬 ' + nm + ' ▾';
+    if (!LIST) branches(function(){ pill(); });
+  }
+  function branches(cb){
+    fetch(API, { method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ branches: true }) })
+      .then(function(r){ return r.json(); }).then(function(j){ LIST = (j && j.ok && j.r) || []; cb(); }).catch(function(){});
+  }
+  function menu(){
+    var old = document.getElementById('brMenu'); if (old) { old.remove(); return; }
+    branches(function(){
+      var m = document.createElement('div'); m.id = 'brMenu'; m.dir = 'rtl';
+      m.style.cssText = 'position:fixed;left:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 112px);z-index:99991;background:#fff;border-radius:12px;' +
+        'box-shadow:0 6px 24px rgba(0,0,0,.25);padding:6px;min-width:170px;font:14px Tahoma,Arial';
+      var h = document.createElement('div'); h.textContent = 'اختار الفرع'; h.style.cssText = 'padding:6px 10px;color:#667085;font-size:12px';
+      m.appendChild(h);
+      LIST.forEach(function(x){
+        var b = document.createElement('button'); b.type = 'button';
+        b.textContent = (x.id === BR ? '✓ ' : '') + x.name;
+        b.style.cssText = 'display:block;width:100%;text-align:right;border:0;background:' + (x.id === BR ? '#eef4ff' : 'transparent') +
+          ';padding:10px;border-radius:8px;font:inherit;color:#101828;cursor:pointer';
+        b.onclick = function(){ m.remove(); if (x.id !== BR) { setBranch(x.id); reload(); } };
+        m.appendChild(b);
+      });
+      document.body.appendChild(m);
+    });
+  }
+  document.addEventListener('DOMContentLoaded', pill);
 }
-var SHIM = '<script>(function(){var API=' + JSON.stringify(API) + ';' +
-  'function mk(s,f,u){return new Proxy({},{get:function(_,k){' +
-  'if(k==="withSuccessHandler")return function(h){return mk(h,f,u)};' +
-  'if(k==="withFailureHandler")return function(h){return mk(s,h,u)};' +
-  'if(k==="withUserObject")return function(o){return mk(s,f,o)};' +
-  'return function(){var a=[].slice.call(arguments);' +
-  'fetch(API,{method:"POST",headers:{"content-type":"text/plain;charset=UTF-8"},body:JSON.stringify({f:k,a:a})})' +
-  '.then(function(r){return r.json()}).then(function(j){if(j&&j.ok){if(s)s(j.r,u)}else{var e=new Error(j&&j.e||"Server error");if(f)f(e,u)}})' +
-  '.catch(function(e){if(f)f(e,u)})}}})}' +
-  'window.google={script:{run:mk(null,null,undefined),host:{close:function(){},setHeight:function(){},setWidth:function(){}}}};})();<\/script>';
+var SHIM = '<script>(' + shim.toString() + ')(' + JSON.stringify(API) + ');<\/script>';
+
+var BRANCH = '2s';
+try { BRANCH = localStorage.getItem('2s-branch') || '2s'; } catch (e) {}
 var params = {};
 new URLSearchParams(location.search).forEach(function(v, k){ params[k] = v; });
-post({ page: true, params: params }).then(function(j){
+fetch(API, { method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ page: true, params: params, b: BRANCH }) })
+.then(function(r){ return r.json(); }).then(function(j){
   if (!j || !j.ok || !j.html) throw new Error(j && j.e || 'empty page');
+  // فرع اتقفل أو اتشال: نرجع للفرع اللي السيرفر فتحه
+  if (j.b && j.b !== BRANCH) { try { localStorage.setItem('2s-branch', j.b); } catch (e) {} }
   var h = j.html, k = h.indexOf('<head>');
   h = k < 0 ? SHIM + h : h.slice(0, k + 6) + SHIM + h.slice(k + 6);
   document.open(); document.write(h); document.close();
 }).catch(function(e){
   var d = document.getElementById('err'); d.style.display = 'block';
-  d.textContent = 'مقدرناش نفتح النسخة التجريبية: ' + (e && e.message || e);
+  d.textContent = 'مقدرناش نفتح البرنامج: ' + (e && e.message || e);
 });
 </script></body></html>

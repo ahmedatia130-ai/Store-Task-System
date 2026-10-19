@@ -296,6 +296,8 @@ try {
    البصمة تنجح. البصمة نفسها مابتتبعتش لأي حد.
    =========================================================== */
 var BIO = {src:null, lang:'ar', pend:null, busy:false};
+/* كل فرع ليه بصمة وجلسة محفوظة لوحده (الفرع بيحفظه التطبيق في 2s-branch) */
+function brKey(k){ var b = '2s'; try { b = localStorage.getItem('2s-branch') || '2s'; } catch (x) {} return b === '2s' ? k : k + ':' + b; }
 var BIO_KEY = '2s-bio';
 var BTX = {
   ar:{offer:'تحب تدخل بالبصمة المرة الجاية على الموبايل ده؟', on:'فعّل', login:'ادخل بالبصمة', as:'ادخل بالبصمة كـ {n}',
@@ -305,8 +307,8 @@ var BTX = {
 };
 var bbar = document.getElementById('bioBar');
 function BL(){ return BTX[BIO.lang === 'en' ? 'en' : 'ar']; }
-function bioAll(){ try { var a = JSON.parse(localStorage.getItem(BIO_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (x) { return []; } }
-function bioPut(a){ try { localStorage.setItem(BIO_KEY, JSON.stringify(a.slice(-3))); } catch (x) {} }
+function bioAll(){ try { var a = JSON.parse(localStorage.getItem(brKey(BIO_KEY)) || '[]'); return Array.isArray(a) ? a : []; } catch (x) { return []; } }
+function bioPut(a){ try { localStorage.setItem(brKey(BIO_KEY), JSON.stringify(a.slice(-3))); } catch (x) {} }
 function bioSup(cb){
   try {
     if (!window.PublicKeyCredential || !navigator.credentials || !window.isSecureContext) return cb(false);
@@ -405,12 +407,12 @@ window.addEventListener('message', function(e){
   if (!fromApp(e)) return;
   try {
     if (m.t === '2s-sess-save' && m.s && typeof m.s === 'object' && m.s.tok) {
-      localStorage.setItem(SESS_KEY, JSON.stringify(m.s));
+      localStorage.setItem(brKey(SESS_KEY), JSON.stringify(m.s));
     } else if (m.t === '2s-sess-clear') {
-      var cur = JSON.parse(localStorage.getItem(SESS_KEY) || 'null');
-      if (!m.tok || !cur || cur.tok === m.tok) localStorage.removeItem(SESS_KEY);
+      var cur = JSON.parse(localStorage.getItem(brKey(SESS_KEY)) || 'null');
+      if (!m.tok || !cur || cur.tok === m.tok) localStorage.removeItem(brKey(SESS_KEY));
     } else if (m.t === '2s-sess-get') {
-      var s = JSON.parse(localStorage.getItem(SESS_KEY) || 'null');
+      var s = JSON.parse(localStorage.getItem(brKey(SESS_KEY)) || 'null');
       e.source.postMessage({t:'2s-sess', s:s}, e.origin);
     }
   } catch (x) {
