@@ -53,6 +53,11 @@ function shim(API){
   function reload(){ try { if (window.top !== window.self && window.top.location.host === location.host) { window.top.location.reload(); return; } } catch (e) {} location.reload(); }
   function pill(){
     var on = false; try { on = get0.call(localStorage, AK) === '1'; } catch (e) {}
+    /* لو الأدمن داخل من جلسة محفوظة (من غير ما يعمل login من جديد) */
+    if (!on) try {
+      var s = JSON.parse(sessionStorage.getItem('sess') || localStorage.getItem('sess_keep') || 'null');
+      if (s && s.me && s.me.role === 'admin') { on = true; set0.call(localStorage, AK, '1'); }
+    } catch (e) {}
     var el = document.getElementById('brPill');
     if (!on) { if (el) el.remove(); return; }
     if (!document.body) return;
