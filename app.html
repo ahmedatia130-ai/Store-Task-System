@@ -102,9 +102,35 @@ var BRANCH = '2s';
 try { BRANCH = localStorage.getItem('2s-branch') || '2s'; } catch (e) {}
 var params = {};
 new URLSearchParams(location.search).forEach(function(v, k){ params[k] = v; });
-fetch(API, { method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ page: true, params: params, b: BRANCH }) })
-.then(function(r){ return r.json(); }).then(function(j){
-  if (!j || !j.ok || !j.html) throw new Error(j && j.e || 'empty page');
+// نسخة محفوظة من الصفحة على الموبايل: لو السيرفر قال إنها لسه هي هي، مش هنحمّلها تاني
+var PKEY = 'https://page.local/' + encodeURIComponent(BRANCH + '?' + new URLSearchParams(params).toString());
+function cacheGet() {
+  try {
+    return caches.open('2s-page').then(function(c){ return c.match(PKEY); }).then(function(r){
+      if (!r) return null;
+      var v = r.headers.get('x-v');
+      return r.text().then(function(h){ return v && h ? { v: v, html: h } : null; });
+    }).catch(function(){ return null; });
+  } catch (e) { return Promise.resolve(null); }
+}
+function cachePut(v, html) {
+  try {
+    caches.open('2s-page').then(function(c){
+      return c.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return c.delete(k); })); })
+        .then(function(){ return c.put(PKEY, new Response(html, { headers: { 'x-v': v } })); });
+    }).catch(function(){});
+  } catch (e) {}
+}
+function getPage(saved) {
+  return fetch(API, { method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ page: true, params: params, b: BRANCH, v: saved ? saved.v : undefined }) })
+  .then(function(r){ return r.json(); }).then(function(j){
+    if (j && j.ok && j.same && saved) return { b: j.b, html: saved.html };
+    if (!j || !j.ok || !j.html) throw new Error(j && j.e || 'empty page');
+    if (j.v) cachePut(j.v, j.html);
+    return j;
+  });
+}
+cacheGet().then(getPage).then(function(j){
   // فرع اتقفل أو اتشال: نرجع للفرع اللي السيرفر فتحه
   if (j.b && j.b !== BRANCH) { try { localStorage.setItem('2s-branch', j.b); } catch (e) {} }
   var h = j.html, k = h.indexOf('<head>');
