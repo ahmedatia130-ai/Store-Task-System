@@ -128,6 +128,10 @@ function getPage(saved) {
     if (!j || !j.ok || !j.html) throw new Error(j && j.e || 'empty page');
     if (j.v) cachePut(j.v, j.html);
     return j;
+  }).catch(function(e){
+    // السيرفر مش بيرد (تحديث أو نت ضعيف): نفتح النسخة المحفوظة على الموبايل بدل رسالة الخطأ
+    if (saved && saved.html) return { html: saved.html };
+    throw e;
   });
 }
 cacheGet().then(getPage).then(function(j){
