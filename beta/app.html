@@ -7,7 +7,7 @@
 <script>
 /* النسخة التجريبية: بيجيب صفحة التطبيق من Supabase (بدل Apps Script)
    ويحط google.script.run بديل بيكلم السيرفر الجديد. Index.html نفسه مابيتغيّرش. */
-var API = 'https://ydrzwhafmfdhdowdruqz.supabase.co/functions/v1/api';
+var API = 'https://qgifyzbgmzemhrapcnwp.supabase.co/functions/v1/api';
 // text/plain عشان المتصفح مايعملش طلب استئذان (preflight) قبل كل طلب، فكل طلب بيروح مرة واحدة بس
 function post(body){
   return fetch(API, { method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body) })
