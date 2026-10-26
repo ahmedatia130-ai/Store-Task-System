@@ -1,7 +1,7 @@
 {
-  "name": "2S Store Task System",
-  "short_name": "2S",
-  "description": "نظام مهام وحضور فرع 2S Home Wear",
+  "name": "OPSORA",
+  "short_name": "OPSORA",
+  "description": "OPSORA — نظام مهام وحضور الفرع",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
