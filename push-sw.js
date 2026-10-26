@@ -11,8 +11,8 @@ self.addEventListener('push', function(e){
   var title = String(m.title || 'OPSORA');
   var opt = {
     body: String(m.body || ''),
-    icon: 'favicon-192.png',
-    badge: 'favicon-192.png',
+    icon: 'favicon-192.png?v=opsora',
+    badge: 'favicon-192.png?v=opsora',
     dir: m.dir === 'ltr' ? 'ltr' : 'rtl',
     lang: m.lang === 'en' ? 'en' : 'ar',
     vibrate: [80, 40, 80],
