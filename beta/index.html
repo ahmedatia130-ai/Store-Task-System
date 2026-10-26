@@ -7,10 +7,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="2S Store Task System">
+<meta name="apple-mobile-web-app-title" content="OPSORA">
 <meta name="robots" content="noindex">
 <meta name="referrer" content="no-referrer">
-<title>2S — نسخة تجريبية</title>
+<title>OPSORA — نسخة تجريبية</title>
 
 <link rel="icon" href="../favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
@@ -37,6 +37,8 @@
   .bl{direction:ltr;display:inline-flex;flex-direction:column;align-items:center;font-size:84px;
    font-family:'Segoe UI',Arial,sans-serif}
   .bl-m{display:flex;align-items:center;gap:.2em;font-weight:300;line-height:1}
+  .bl-o{display:block;animation:blO .6s .3s cubic-bezier(.22,1.2,.36,1) both}
+  @keyframes blO{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
   .bl-g{display:inline-block;color:#f5a33c;
    background:linear-gradient(105deg,#f5a33c 42%,#ffe2b0 50%,#f5a33c 58%);background-size:260% 100%;
    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
@@ -81,9 +83,9 @@
 <body>
 
 <div id="splash">
-  <div class="bl" role="status" aria-label="2S Home Wear">
-    <div class="bl-m"><span class="bl-g bl-2">2</span><span class="bl-b"></span><span class="bl-g bl-s">S</span></div>
-    <div class="bl-w"><span>HOME</span><span>WEAR</span></div>
+  <div class="bl" role="status" aria-label="OPSORA">
+    <div class="bl-m"><span class="bl-o"><svg width="96" height="96" viewBox="0 0 100 100" aria-hidden="true" style="display:block"><defs><linearGradient id="oa" x1="0.1" y1="0" x2="0.5" y2="1"><stop offset="0" stop-color="#4CC9F7"/><stop offset="1" stop-color="#1D4ED8"/></linearGradient><linearGradient id="ob" x1="0.7" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#2F7BEF"/><stop offset="0.55" stop-color="#1D8EF2"/><stop offset="1" stop-color="#40DAF6"/></linearGradient><linearGradient id="os" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0B1F46" stop-opacity=".45"/><stop offset="1" stop-color="#0B1F46" stop-opacity="0"/></linearGradient><linearGradient id="ok" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4ADE80"/><stop offset="1" stop-color="#16A34A"/></linearGradient><mask id="om"><polygon points="50,22 74.2,36 74.2,64 50,78 25.8,64 25.8,36" fill="#fff" stroke="#fff" stroke-width="44" stroke-linejoin="round"/></mask></defs><g mask="url(#om)"><rect width="100" height="100" fill="url(#oa)"/><path d="M63 19 C 60 11 56 5 50 0 L 100 0 L 100 100 L 40 100 C 60 88 75 70 77 50 C 78 39 72 28 63 19 Z" fill="url(#ob)"/><path d="M63 19 C 60 11 56 5 50 0 L 60 0 C 66 6 70 13 72 22 Z" fill="url(#os)"/></g><g transform="translate(52 53) scale(1.1) translate(-52 -53)"><path d="M44 88 C 30 75 24 59 28 46 C 33 31 47 23 63 19 C 73 29 78 40 76 51 C 73 67 61 79 44 88 Z" fill="#0B1F46"/><path d="M40 53 L48.5 61.5 L64 43" fill="none" stroke="url(#ok)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></g></svg></span></div>
+    <div class="bl-w"><span style="opacity:1;font-weight:700">OPSORA</span></div>
     <div class="bl-l"><i></i></div>
   </div>
   <div class="sub" id="ssub"></div>
@@ -91,7 +93,7 @@
 </div>
 
 <iframe id="frame"
-        title="2S Store Task System"
+        title="OPSORA"
         allow="geolocation *; clipboard-write *; fullscreen *"
         allowfullscreen
         referrerpolicy="no-referrer"></iframe>
@@ -332,7 +334,7 @@ function bioMake(empId, name){
   if (BIO.busy) return; BIO.busy = true; bioHide();
   var enc = new TextEncoder();
   navigator.credentials.create({publicKey:{
-    challenge: rnd(32), rp:{name:'2S Home Wear'},
+    challenge: rnd(32), rp:{name:'OPSORA'},
     user:{id: enc.encode(String(empId)).slice(0, 64), name: String(name || empId), displayName: String(name || empId)},
     pubKeyCredParams:[{type:'public-key', alg:-7}, {type:'public-key', alg:-257}],
     authenticatorSelection:{authenticatorAttachment:'platform', userVerification:'required', residentKey:'discouraged'},

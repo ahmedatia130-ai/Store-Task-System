@@ -8,7 +8,7 @@ self.addEventListener('push', function(e){
   var d = {};
   try { d = e.data ? e.data.json() : {}; } catch (x) { try { d = {data:{body:e.data.text()}}; } catch (y) {} }
   var m = d.data || d.notification || d || {};
-  var title = String(m.title || '2S Store Task System');
+  var title = String(m.title || 'OPSORA');
   var opt = {
     body: String(m.body || ''),
     icon: 'favicon-192.png',
