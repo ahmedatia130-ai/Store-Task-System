@@ -8,11 +8,11 @@ self.addEventListener('push', function(e){
   var d = {};
   try { d = e.data ? e.data.json() : {}; } catch (x) { try { d = {data:{body:e.data.text()}}; } catch (y) {} }
   var m = d.data || d.notification || d || {};
-  var title = String(m.title || 'OPSORA');
+  var title = String(m.title || 'As-hal');
   var opt = {
     body: String(m.body || ''),
-    icon: 'favicon-192.png?v=opsora',
-    badge: 'favicon-192.png?v=opsora',
+    icon: 'favicon-192.png?v=ashal',
+    badge: 'favicon-192.png?v=ashal',
     dir: m.dir === 'ltr' ? 'ltr' : 'rtl',
     lang: m.lang === 'en' ? 'en' : 'ar',
     vibrate: [80, 40, 80],
