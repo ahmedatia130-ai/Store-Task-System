@@ -11,8 +11,8 @@ self.addEventListener('push', function(e){
   var title = String(m.title || 'As-hal');
   var opt = {
     body: String(m.body || ''),
-    icon: 'favicon-192.png?v=ashal',
-    badge: 'favicon-192.png?v=ashal',
+    icon: 'favicon-192.png?v=ashal2',
+    badge: 'favicon-192.png?v=ashal2',
     dir: m.dir === 'ltr' ? 'ltr' : 'rtl',
     lang: m.lang === 'en' ? 'en' : 'ar',
     vibrate: [80, 40, 80],
