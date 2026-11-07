@@ -102,8 +102,11 @@ var BRANCH = '2s';
 try { BRANCH = localStorage.getItem('2s-branch') || '2s'; } catch (e) {}
 var params = {};
 new URLSearchParams(location.search).forEach(function(v, k){ params[k] = v; });
+// لينك مدير فرع جديد (?b=الفرع&join=الكود): يفتح على الفرع ده علطول
+if (params.b && /^[a-z0-9][a-z0-9_-]{0,31}$/.test(params.b)) { BRANCH = params.b; try { localStorage.setItem('2s-branch', BRANCH); } catch (e) {} }
+var keyP = {}; Object.keys(params).forEach(function(k){ if (k !== 'join' && k !== 'b') keyP[k] = params[k]; });
 // نسخة محفوظة من الصفحة على الموبايل: لو السيرفر قال إنها لسه هي هي، مش هنحمّلها تاني
-var PKEY = 'https://page.local/' + encodeURIComponent(BRANCH + '?' + new URLSearchParams(params).toString());
+var PKEY = 'https://page.local/' + encodeURIComponent(BRANCH + '?' + new URLSearchParams(keyP).toString());
 function cacheGet() {
   try {
     return caches.open('2s-page').then(function(c){ return c.match(PKEY); }).then(function(r){
