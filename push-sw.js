@@ -1,3 +1,8 @@
+/*!
+ * Copyright (c) 2026 Ahmed Atia. All rights reserved.
+ * As-hal is proprietary and confidential software. Copying, modifying, distributing
+ * or using this code, in whole or in part, without prior written permission is prohibited.
+ */
 /* 2S — service worker الإشعارات
    بيستقبل الإشعار من Firebase حتى لو الأبلكيشن مقفول، ويعرضه على الموبايل.
    الضغط على الإشعار بيفتح الأبلكيشن (أو يرجع للتاب المفتوح). */
